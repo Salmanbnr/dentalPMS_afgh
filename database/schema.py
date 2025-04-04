@@ -1,4 +1,4 @@
-# dental_clinic/database/schema.py
+# database/schema.py
 import sqlite3
 from .connection import get_db_connection, close_db_connection, DATABASE_PATH
 

@@ -1,4 +1,4 @@
-# dental_clinic/database/connection.py
+# database/connection.py
 import sqlite3
 import os
 from pathlib import Path

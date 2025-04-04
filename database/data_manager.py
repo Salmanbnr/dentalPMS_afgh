@@ -1,4 +1,4 @@
-# dental_clinic/database/data_manager.py
+# database/data_manager.py
 import sqlite3
 import shutil
 import os
