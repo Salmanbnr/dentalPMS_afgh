@@ -1,3 +1,4 @@
+# ui/visit/add_edit_visit_window.py
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
                              QPushButton, QMessageBox, QFormLayout, QGroupBox,
@@ -400,7 +401,7 @@ class AddEditVisitWindow(QWidget):
             table.setItem(row, 0, QTableWidgetItem(str(item_id)))
             table.setItem(row, 1, QTableWidgetItem(name))
             table.setItem(row, 2, QTableWidgetItem(tooth))
-            table.setItem(row, 3, QTableWidgetItem(f"AFN {price:.2f}"))
+            table.setItem(row, 3, QTableWidgetItem(f" {price:.2f}"))
             table.setItem(row, 4, QTableWidgetItem(notes))
             table.setCellWidget(row, 5, remove_button)
         else:
@@ -416,7 +417,7 @@ class AddEditVisitWindow(QWidget):
             table.setItem(row, 0, QTableWidgetItem(str(item_id)))
             table.setItem(row, 1, QTableWidgetItem(name))
             table.setItem(row, 2, QTableWidgetItem(qty))
-            table.setItem(row, 3, QTableWidgetItem(f"AFN {price:.2f}"))
+            table.setItem(row, 3, QTableWidgetItem(f" {price:.2f}"))
             table.setItem(row, 4, QTableWidgetItem(instructions))
             table.setCellWidget(row, 5, remove_button)
 
@@ -472,18 +473,18 @@ class AddEditVisitWindow(QWidget):
                 button.setProperty("row", row)
 
     def update_financial_summary(self):
-        total = sum(float(self.services_table.item(row, 3).text().replace('AFN', '')) for row in range(self.services_table.rowCount()) if self.services_table.item(row, 3)) + \
-                sum(float(self.prescriptions_table.item(row, 3).text().replace('AFN', '')) for row in range(self.prescriptions_table.rowCount()) if self.prescriptions_table.item(row, 3))
+        total = sum(float(self.services_table.item(row, 3).text().replace(' ', '')) for row in range(self.services_table.rowCount()) if self.services_table.item(row, 3)) + \
+                sum(float(self.prescriptions_table.item(row, 3).text().replace(' ', '')) for row in range(self.prescriptions_table.rowCount()) if self.prescriptions_table.item(row, 3))
 
-        self.total_amount_label.setText(f"AFN {total:.2f}")
+        self.total_amount_label.setText(f" {total:.2f}")
         due = max(0.0, total - self.paid_amount_input.value())
-        self.due_amount_label.setText(f"AFN {due:.2f}")
+        self.due_amount_label.setText(f" {due:.2f}")
 
     def update_due_amount_display(self):
-        total = float(self.total_amount_label.text().replace('AFN', ''))
+        total = float(self.total_amount_label.text().replace(' ', ''))
         paid = self.paid_amount_input.value()
         due = max(0.0, total - paid)
-        self.due_amount_label.setText(f"AFN {due:.2f}")
+        self.due_amount_label.setText(f" {due:.2f}")
 
     def save_visit(self):
         visit_date = self.visit_date_input.date().toString("yyyy-MM-dd")

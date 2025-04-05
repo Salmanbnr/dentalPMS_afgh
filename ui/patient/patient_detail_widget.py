@@ -218,7 +218,7 @@ class PatientDetailWidget(QWidget):
                 total = visit.get('total_amount', 0.0)
                 due = visit.get('due_amount', 0.0)
                 visit_number = visit.get('visit_number', 'N/A')
-                item_text = f"Visit #{visit_number} on {visit_date} - Total: {total:.2f}, Due: {due:.2f}"
+                item_text = f"Visit No. {visit_number} on {visit_date} - Total: {total:.2f}, Due: {due:.2f}"
                 list_item = QListWidgetItem(item_text)
                 list_item.setData(Qt.ItemDataRole.UserRole, visit_id)
                 self.visits_list_widget.addItem(list_item)

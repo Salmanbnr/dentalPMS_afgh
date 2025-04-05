@@ -5,9 +5,9 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdi
                              QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QLineEdit, QAbstractItemView, QScrollArea)
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
+from PyQt6.QtGui import QDoubleValidator
 import qtawesome as qta
 from pathlib import Path
-
 from database.data_manager import (get_patient_by_id, get_service_by_id, get_visit_by_id, get_services_for_visit, 
                                   get_prescriptions_for_visit, update_visit_details, 
                                   update_visit_payment, add_service_to_visit, remove_service_from_visit, 
@@ -16,7 +16,6 @@ from model.visit_manager import load_visit_data, get_all_services, get_all_medic
 
 class VisitDetailWindow(QWidget):
     """Widget to display and edit visit details with modern UI/UX."""
-
     visit_updated = pyqtSignal(int)  # Signal to emit patient_id when visit is updated
     closed = pyqtSignal()  # Signal to return to patient details
 
@@ -28,6 +27,8 @@ class VisitDetailWindow(QWidget):
         self.patient_data = None
         self.services = []
         self.prescriptions = []
+        self.new_services = []  # Track new services to avoid duplicates
+        self.new_prescriptions = []  # Track new prescriptions to avoid duplicates
         self.is_editing = False
 
         # Load data first
@@ -105,7 +106,6 @@ class VisitDetailWindow(QWidget):
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setSpacing(20)
-
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.content_widget)
@@ -134,13 +134,11 @@ class VisitDetailWindow(QWidget):
         self.lab_results_input.setReadOnly(True)
         self.lab_results_input.setMinimumHeight(120)
         self.lab_results_input.setPlaceholderText("Lab results or references...")
-
         visit_date = QDate.fromString(self.visit_data.get('visit_date', ''), "yyyy-MM-dd")
         self.visit_date_input.setDate(visit_date if visit_date.isValid() else QDate.currentDate())
         self.visit_notes_input.setPlainText(self.visit_data.get('notes', ''))
         self.lab_results_input.setPlainText(self.visit_data.get('lab_results', ''))
-
-        visit_form_layout.addRow("Visit Details:", QLabel(f"Visit #{self.visit_data.get('visit_number', 'N/A')} on {self.visit_data.get('visit_date', 'N/A')}"))
+        visit_form_layout.addRow("Visit Details:", QLabel(f"Visit No. {self.visit_data.get('visit_number', 'N/A')} on {self.visit_data.get('visit_date', 'N/A')}"))
         visit_form_layout.addRow("Visit Date:", self.visit_date_input)
         visit_form_layout.addRow("Notes:", self.visit_notes_input)
         visit_form_layout.addRow("Lab Results:", self.lab_results_input)
@@ -149,7 +147,6 @@ class VisitDetailWindow(QWidget):
         # Services Section
         services_group = QGroupBox("Services Performed")
         services_layout = QVBoxLayout(services_group)
-
         self.add_service_widget = QWidget()
         self.add_service_layout = QHBoxLayout(self.add_service_widget)
         self.service_combo = QComboBox()
@@ -166,7 +163,6 @@ class VisitDetailWindow(QWidget):
         self.service_notes_input.setMinimumHeight(80)
         self.add_service_button = QPushButton(qta.icon('fa5s.plus-circle', color='white'), "Add Service")
         self.add_service_button.clicked.connect(self.add_service_item)
-
         self.add_service_layout.addWidget(QLabel("Service:"))
         self.add_service_layout.addWidget(self.service_combo, 2)
         self.add_service_layout.addWidget(QLabel("Tooth #:"))
@@ -178,7 +174,6 @@ class VisitDetailWindow(QWidget):
         self.add_service_layout.addWidget(self.add_service_button)
         services_layout.addWidget(self.add_service_widget)
         self.add_service_widget.setVisible(False)
-
         self.services_table = QTableWidget()
         self.services_table.setColumnCount(7)
         self.services_table.setHorizontalHeaderLabels(["ID", "Service", "Tooth #", "Price", "Notes", "", "Action"])
@@ -196,7 +191,6 @@ class VisitDetailWindow(QWidget):
         # Prescriptions Section
         prescriptions_group = QGroupBox("Prescriptions Issued")
         prescriptions_layout = QVBoxLayout(prescriptions_group)
-
         self.add_prescription_widget = QWidget()
         self.add_prescription_layout = QHBoxLayout(self.add_prescription_widget)
         self.med_combo = QComboBox()
@@ -214,7 +208,6 @@ class VisitDetailWindow(QWidget):
         self.med_instr_input.setMinimumHeight(80)
         self.add_med_button = QPushButton(qta.icon('fa5s.plus-circle', color='white'), "Add Medication")
         self.add_med_button.clicked.connect(self.add_prescription_item)
-
         self.add_prescription_layout.addWidget(QLabel("Medication:"))
         self.add_prescription_layout.addWidget(self.med_combo, 2)
         self.add_prescription_layout.addWidget(QLabel("Qty:"))
@@ -226,7 +219,6 @@ class VisitDetailWindow(QWidget):
         self.add_prescription_layout.addWidget(self.add_med_button)
         prescriptions_layout.addWidget(self.add_prescription_widget)
         self.add_prescription_widget.setVisible(False)
-
         self.prescriptions_table = QTableWidget()
         self.prescriptions_table.setColumnCount(7)
         self.prescriptions_table.setHorizontalHeaderLabels(["ID", "Medication", "Qty", "Price", "Instructions", "", "Action"])
@@ -244,15 +236,16 @@ class VisitDetailWindow(QWidget):
         # Financial Summary Group
         finance_group = QGroupBox("Financial Summary")
         finance_layout = QFormLayout(finance_group)
-        self.total_amount_label = QLabel(f"${self.visit_data.get('total_amount', 0.0):.2f}")
-        self.paid_amount_input = QDoubleSpinBox()
-        self.paid_amount_input.setRange(0.0, 99999.99)
-        self.paid_amount_input.setDecimals(2)
-        self.paid_amount_input.setValue(self.visit_data.get('paid_amount', 0.0))
-        self.paid_amount_input.setReadOnly(True)
-        self.due_amount_label = QLabel(f"${self.visit_data.get('due_amount', 0.0):.2f}")
+        self.total_amount_label = QLabel(f"{self.visit_data.get('total_amount', 0.0):.2f}")
+        self.paid_amount_label = QLabel(f"{self.visit_data.get('paid_amount', 0.0):.2f}")  # Now a label, unchangeable
+        self.pay_due_input = QLineEdit()
+        self.pay_due_input.setPlaceholderText("Enter amount to pay")
+        self.pay_due_input.setValidator(QDoubleValidator(0.0, 99999.99, 2, self.pay_due_input))  # Only allow numbers
+        self.pay_due_input.textChanged.connect(self.update_financial_summary)  # Live update
+        self.due_amount_label = QLabel(f"{self.visit_data.get('due_amount', 0.0):.2f}")
         finance_layout.addRow("Total Amount:", self.total_amount_label)
-        finance_layout.addRow("Amount Paid:", self.paid_amount_input)
+        finance_layout.addRow("Amount Paid:", self.paid_amount_label)
+        finance_layout.addRow("Pay Due:", self.pay_due_input)
         finance_layout.addRow("Amount Due:", self.due_amount_label)
         self.content_layout.addWidget(finance_group)
 
@@ -260,7 +253,6 @@ class VisitDetailWindow(QWidget):
         action_layout = QHBoxLayout()
         action_layout.setSpacing(15)
         action_layout.addStretch()
-
         self.edit_button = QPushButton(qta.icon('fa5s.edit', color='white'), "Edit Visit")
         self.edit_button.clicked.connect(self.toggle_edit_mode)
         self.save_button = QPushButton(qta.icon('fa5s.save', color='white'), "Save Visit")
@@ -268,7 +260,6 @@ class VisitDetailWindow(QWidget):
         self.save_button.setVisible(False)
         self.cancel_button = QPushButton(qta.icon('fa5s.times-circle', color='white'), "Close")
         self.cancel_button.clicked.connect(self.close_view)
-
         action_layout.addWidget(self.edit_button)
         action_layout.addWidget(self.save_button)
         action_layout.addWidget(self.cancel_button)
@@ -289,17 +280,19 @@ class VisitDetailWindow(QWidget):
             return False
         self.visit_data, self.patient_data, self.services, self.prescriptions = data
         self.patient_id = self.patient_data.get('patient_id')  # Ensure patient_id is set
+        self.new_services.clear()
+        self.new_prescriptions.clear()
         return True
 
     def populate_services_table(self):
-        self.services_table.setRowCount(len(self.services))
-        for row, service in enumerate(self.services):
-            self._add_row_to_table(self.services_table, service, True, False)
+        self.services_table.setRowCount(0)  # Clear existing rows
+        for service in self.services + self.new_services:
+            self._add_row_to_table(self.services_table, service, True, 'new' in service)
 
     def populate_prescriptions_table(self):
-        self.prescriptions_table.setRowCount(len(self.prescriptions))
-        for row, prescription in enumerate(self.prescriptions):
-            self._add_row_to_table(self.prescriptions_table, prescription, False, False)
+        self.prescriptions_table.setRowCount(0)  # Clear existing rows
+        for prescription in self.prescriptions + self.new_prescriptions:
+            self._add_row_to_table(self.prescriptions_table, prescription, False, 'new' in prescription)
 
     def toggle_edit_mode(self):
         self.is_editing = not self.is_editing
@@ -307,7 +300,7 @@ class VisitDetailWindow(QWidget):
             self.visit_date_input.setReadOnly(False)
             self.visit_notes_input.setReadOnly(False)
             self.lab_results_input.setReadOnly(False)
-            self.paid_amount_input.setReadOnly(False)
+            self.pay_due_input.setEnabled(True)  # Enable Pay Due field in edit mode
             self.add_service_widget.setVisible(True)
             self.add_prescription_widget.setVisible(True)
             self.edit_button.setVisible(False)
@@ -315,7 +308,6 @@ class VisitDetailWindow(QWidget):
             self.cancel_button.setText("Cancel")
             self.cancel_button.clicked.disconnect()
             self.cancel_button.clicked.connect(self.cancel_edit)
-
             for row in range(self.services_table.rowCount()):
                 button = self.services_table.cellWidget(row, 6)
                 if button:
@@ -328,7 +320,8 @@ class VisitDetailWindow(QWidget):
             self.visit_date_input.setReadOnly(True)
             self.visit_notes_input.setReadOnly(True)
             self.lab_results_input.setReadOnly(True)
-            self.paid_amount_input.setReadOnly(True)
+            self.pay_due_input.setEnabled(False)  # Disable Pay Due field when not editing
+            self.pay_due_input.clear()  # Clear Pay Due field when exiting edit mode
             self.add_service_widget.setVisible(False)
             self.add_prescription_widget.setVisible(False)
             self.edit_button.setVisible(True)
@@ -340,7 +333,6 @@ class VisitDetailWindow(QWidget):
             self.populate_services_table()
             self.populate_prescriptions_table()
             self.update_financial_summary()
-
             for row in range(self.services_table.rowCount()):
                 button = self.services_table.cellWidget(row, 6)
                 if button:
@@ -365,52 +357,55 @@ class VisitDetailWindow(QWidget):
         if not service_name or service_name not in self.available_services:
             QMessageBox.warning(self, "Selection Error", "Please select a valid service.")
             return
-
         service_id = self.available_services[service_name]['id']
         tooth_str = self.service_tooth_input.text().strip()
         tooth_number = int(tooth_str) if tooth_str.isdigit() else None
         price = self.service_price_input.value()
         notes = self.service_notes_input.toPlainText().strip()
-
         item_data = {'service_id': service_id, 'service_name': service_name,
-                     'tooth_number': tooth_number, 'price_charged': price, 'notes': notes}
+                     'tooth_number': tooth_number, 'price_charged': price, 'notes': notes, 'new': True}
+        self.new_services.append(item_data)
         self._add_row_to_table(self.services_table, item_data, True, True)
         self.update_financial_summary()
+        # Clear input fields
+        self.service_tooth_input.clear()
+        self.service_notes_input.clear()
+        self.service_price_input.setValue(0.0)
 
     def add_prescription_item(self):
         med_name = self.med_combo.currentText()
         if not med_name or med_name not in self.available_medications:
             QMessageBox.warning(self, "Selection Error", "Please select a valid medication.")
             return
-
         med_id = self.available_medications[med_name]['id']
         quantity = self.med_qty_input.value()
         price = self.med_price_input.value()
         instructions = self.med_instr_input.toPlainText().strip()
-
         item_data = {'medication_id': med_id, 'medication_name': med_name,
-                     'quantity': quantity, 'price_charged': price, 'instructions': instructions}
+                     'quantity': quantity, 'price_charged': price, 'instructions': instructions, 'new': True}
+        self.new_prescriptions.append(item_data)
         self._add_row_to_table(self.prescriptions_table, item_data, False, True)
         self.update_financial_summary()
+        # Clear input fields
+        self.med_qty_input.setValue(1)
+        self.med_instr_input.clear()
+        self.med_price_input.setValue(0.0)
 
     def _add_row_to_table(self, table, item_data, is_service, is_new):
         row_position = table.rowCount()
         table.insertRow(row_position)
-
         item_id = item_data.get('visit_service_id', item_data.get('service_id', 
                      item_data.get('visit_prescription_id', item_data.get('medication_id', ''))))
         name = item_data.get('service_name', item_data.get('medication_name', 'N/A'))
         col2_val = str(item_data.get('tooth_number', item_data.get('quantity', '')))
         price = item_data.get('price_charged', 0.0)
         notes = item_data.get('notes', item_data.get('instructions', ''))
-
         table.setItem(row_position, 0, QTableWidgetItem(str(item_id)))
-        table.setItem(row_position, 5, QTableWidgetItem('new' if is_new else 'existing'))
+        table.setItem(row_position, 5, QTableWidgetItem('new' if 'new' in item_data else 'existing'))
         table.setItem(row_position, 1, QTableWidgetItem(name))
         table.setItem(row_position, 2, QTableWidgetItem(col2_val))
-        table.setItem(row_position, 3, QTableWidgetItem(f"${price:.2f}"))
+        table.setItem(row_position, 3, QTableWidgetItem(f"{price:.2f}"))
         table.setItem(row_position, 4, QTableWidgetItem(notes))
-
         remove_button = QPushButton(qta.icon('fa5s.trash-alt', color='red'), "")
         remove_button.setToolTip(f"Remove this {'service' if is_service else 'prescription'}")
         remove_button.setProperty("row", row_position)
@@ -419,20 +414,16 @@ class VisitDetailWindow(QWidget):
         remove_button.setStyleSheet("QPushButton { background: transparent; border: none; }")
         remove_button.setEnabled(self.is_editing)
         table.setCellWidget(row_position, 6, remove_button)
-
         table.resizeColumnsToContents()
 
     def remove_item(self, button):
         row_to_remove = button.property("row")
         is_service = button.property("is_service")
-
         if row_to_remove is None:
             return
-
         table = self.services_table if is_service else self.prescriptions_table
         item_id = int(table.item(row_to_remove, 0).text())
         item_type = table.item(row_to_remove, 5).text()
-
         if QMessageBox.question(self, "Confirm", f"Remove this {'service' if is_service else 'prescription'}?",
                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.Yes:
             if item_type == 'existing':
@@ -443,6 +434,11 @@ class VisitDetailWindow(QWidget):
                 if not success:
                     QMessageBox.critical(self, "Error", "Failed to remove item.")
                     return
+            else:  # 'new' item
+                if is_service:
+                    self.new_services = [s for s in self.new_services if s.get('service_id', '') != item_id]
+                else:
+                    self.new_prescriptions = [p for p in self.new_prescriptions if p.get('medication_id', '') != item_id]
             table.removeRow(row_to_remove)
             self.update_row_properties(table, row_to_remove)
             self.update_financial_summary()
@@ -455,55 +451,56 @@ class VisitDetailWindow(QWidget):
                 button.setEnabled(self.is_editing)
 
     def update_financial_summary(self):
-        total = sum(float(self.services_table.item(row, 3).text().replace('$', '')) for row in range(self.services_table.rowCount()) if self.services_table.item(row, 3)) + \
-                sum(float(self.prescriptions_table.item(row, 3).text().replace('$', '')) for row in range(self.prescriptions_table.rowCount()) if self.prescriptions_table.item(row, 3))
+        total_services = sum(float(self.services_table.item(row, 3).text()) for row in range(self.services_table.rowCount()) if self.services_table.item(row, 3))
+        total_prescriptions = sum(float(self.prescriptions_table.item(row, 3).text()) for row in range(self.prescriptions_table.rowCount()) if self.prescriptions_table.item(row, 3))
+        total = total_services + total_prescriptions
+        self.total_amount_label.setText(f"{total:.2f}")
 
-        self.total_amount_label.setText(f"${total:.2f}")
-        due = max(0.0, total - self.paid_amount_input.value())
-        self.due_amount_label.setText(f"${due:.2f}")
+        current_paid = float(self.visit_data.get('paid_amount', 0.0))
+        pay_due_text = self.pay_due_input.text().strip()
+        pay_due = float(pay_due_text) if pay_due_text and pay_due_text.replace('.', '').isdigit() else 0.0
+        new_paid = current_paid + pay_due
+        self.paid_amount_label.setText(f"{new_paid:.2f}")
+        due = max(0.0, total - new_paid)
+        self.due_amount_label.setText(f"{due:.2f}")
 
     def save_changes(self):
         visit_date = self.visit_date_input.date().toString("yyyy-MM-dd")
         notes = self.visit_notes_input.toPlainText().strip()
         lab_results = self.lab_results_input.toPlainText().strip()
-        paid_amount = self.paid_amount_input.value()
+        current_paid = float(self.visit_data.get('paid_amount', 0.0))
+        pay_due_text = self.pay_due_input.text().strip()
+        pay_due = float(pay_due_text) if pay_due_text and pay_due_text.replace('.', '').isdigit() else 0.0
+        new_paid_amount = current_paid + pay_due
 
         success = update_visit_details(self.visit_id, visit_date, notes, lab_results)
         if not success:
             QMessageBox.critical(self, "Error", "Failed to update visit details.")
             return
 
-        for row in range(self.services_table.rowCount()):
-            item_id = int(self.services_table.item(row, 0).text())
-            item_type = self.services_table.item(row, 5).text()
-            if item_type == 'new':
-                service_name = self.services_table.item(row, 1).text()
-                tooth_str = self.services_table.item(row, 2).text()
-                tooth_number = int(tooth_str) if tooth_str.isdigit() else None
-                price = float(self.services_table.item(row, 3).text().replace('$', ''))
-                notes = self.services_table.item(row, 4).text()
-                service_id = self.available_services.get(service_name, {}).get('id')
-                if service_id:
-                    add_service_to_visit(self.visit_id, service_id, tooth_number, price, notes)
+        # Save new services
+        for service in self.new_services:
+            service_id = service['service_id']
+            tooth_number = service.get('tooth_number')
+            price = service['price_charged']
+            notes = service.get('notes', '')
+            add_service_to_visit(self.visit_id, service_id, tooth_number, price, notes)
 
-        for row in range(self.prescriptions_table.rowCount()):
-            item_id = int(self.prescriptions_table.item(row, 0).text())
-            item_type = self.prescriptions_table.item(row, 5).text()
-            if item_type == 'new':
-                med_name = self.prescriptions_table.item(row, 1).text()
-                qty = int(self.prescriptions_table.item(row, 2).text())
-                price = float(self.prescriptions_table.item(row, 3).text().replace('$', ''))
-                instructions = self.prescriptions_table.item(row, 4).text()
-                med_id = self.available_medications.get(med_name, {}).get('id')
-                if med_id:
-                    add_prescription_to_visit(self.visit_id, med_id, qty, price, instructions)
+        # Save new prescriptions
+        for prescription in self.new_prescriptions:
+            med_id = prescription['medication_id']
+            quantity = prescription['quantity']
+            price = prescription['price_charged']
+            instructions = prescription.get('instructions', '')
+            add_prescription_to_visit(self.visit_id, med_id, quantity, price, instructions)
 
-        success_payment = update_visit_payment(self.visit_id, paid_amount)
+        success_payment = update_visit_payment(self.visit_id, new_paid_amount)
         if not success_payment:
             QMessageBox.critical(self, "Error", "Failed to update payment details.")
             return
 
         QMessageBox.information(self, "Success", f"Visit ID {self.visit_id} updated successfully.")
+        self.visit_data['paid_amount'] = new_paid_amount  # Update local data
         self.visit_updated.emit(self.patient_id)
         self.toggle_edit_mode()
 
@@ -515,6 +512,7 @@ class VisitDetailWindow(QWidget):
 
 if __name__ == '__main__':
     from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QDoubleValidator
     try:
         from database.schema import initialize_database
         from database.data_manager import add_patient, add_visit, add_service, add_medication, add_service_to_visit, add_prescription_to_visit
