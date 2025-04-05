@@ -14,18 +14,18 @@ from model.visit_manager import load_initial_data, save_visit_details, add_new_v
 
 class AddEditVisitWindow(QDialog):
     """Dialog for adding a new visit or editing an existing one."""
-    visit_saved = pyqtSignal(int) # Emit patient_id when visit is saved/updated
+    visit_saved = pyqtSignal(int)  # Emit patient_id when visit is saved/updated
 
     def __init__(self, patient_id, visit_id=None, parent=None):
         super().__init__(parent)
         self.patient_id = patient_id
-        self.visit_id = visit_id # None for adding, existing ID for editing
+        self.visit_id = visit_id  # None for adding, existing ID for editing
         self.is_editing = visit_id is not None
 
         self.patient_data = None
         self.visit_data = None
-        self.available_services = {} # Store name -> id, price
-        self.available_medications = {} # Store name -> id, price
+        self.available_services = {}  # Store name -> id, price
+        self.available_medications = {}  # Store name -> id, price
 
         self.setWindowTitle(f"{'Edit' if self.is_editing else 'Add'} Visit for Patient ID: {self.patient_id}")
         self.setMinimumWidth(750)
@@ -59,6 +59,7 @@ class AddEditVisitWindow(QDialog):
         self.lab_results_input = QTextEdit()
         self.lab_results_input.setPlaceholderText("Lab results or references...")
         self.lab_results_input.setFixedHeight(60)
+
         visit_form_layout.addRow("Visit Date:", self.visit_date_input)
         visit_form_layout.addRow("Notes:", self.visit_notes_input)
         visit_form_layout.addRow("Lab Results:", self.lab_results_input)
@@ -93,11 +94,11 @@ class AddEditVisitWindow(QDialog):
         services_layout.addLayout(add_service_layout)
         # Services Table
         self.services_table = QTableWidget()
-        self.services_table.setColumnCount(5) # Added hidden ID column
-        self.services_table.setHorizontalHeaderLabels(["Service", "Tooth #", "Price", "Notes", ""]) # Last column for remove button
-        self.services_table.setColumnHidden(0, True) # Hide visit_service_id/service_id (use map later if needed)
-        self.services_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # Service Name
-        self.services_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch) # Notes
+        self.services_table.setColumnCount(5)  # Added hidden ID column
+        self.services_table.setHorizontalHeaderLabels(["Service", "Tooth #", "Price", "Notes", ""])  # Last column for remove button
+        self.services_table.setColumnHidden(0, True)  # Hide visit_service_id/service_id (use map later if needed)
+        self.services_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Service Name
+        self.services_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Notes
         self.services_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.services_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         services_layout.addWidget(self.services_table)
@@ -134,11 +135,11 @@ class AddEditVisitWindow(QDialog):
         prescriptions_layout.addLayout(add_prescription_layout)
         # Prescriptions Table
         self.prescriptions_table = QTableWidget()
-        self.prescriptions_table.setColumnCount(5) # Added hidden ID column
-        self.prescriptions_table.setHorizontalHeaderLabels(["Medication", "Qty", "Price", "Instructions", ""]) # Last col for remove
-        self.prescriptions_table.setColumnHidden(0, True) # Hide visit_prescription_id/med_id
-        self.prescriptions_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # Med Name
-        self.prescriptions_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch) # Instructions
+        self.prescriptions_table.setColumnCount(5)  # Added hidden ID column
+        self.prescriptions_table.setHorizontalHeaderLabels(["Medication", "Qty", "Price", "Instructions", ""])  # Last col for remove
+        self.prescriptions_table.setColumnHidden(0, True)  # Hide visit_prescription_id/med_id
+        self.prescriptions_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Med Name
+        self.prescriptions_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Instructions
         self.prescriptions_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.prescriptions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         prescriptions_layout.addWidget(self.prescriptions_table)
@@ -147,11 +148,11 @@ class AddEditVisitWindow(QDialog):
         # --- Payment Section ---
         payment_group = QGroupBox("Payment")
         payment_layout = QFormLayout(payment_group)
-        self.total_amount_label = QLabel("0.00") # Will be updated
+        self.total_amount_label = QLabel("0.00")  # Will be updated
         self.paid_amount_input = QDoubleSpinBox()
         self.paid_amount_input.setRange(0.0, 99999.99)
         self.paid_amount_input.setDecimals(2)
-        self.due_amount_label = QLabel("0.00") # Will be updated
+        self.due_amount_label = QLabel("0.00")  # Will be updated
         payment_layout.addRow("Total Amount:", self.total_amount_label)
         payment_layout.addRow("Amount Paid:", self.paid_amount_input)
         payment_layout.addRow("Amount Due:", self.due_amount_label)
@@ -172,19 +173,21 @@ class AddEditVisitWindow(QDialog):
         # Update prices based on initial combo selections
         self.update_service_price()
         self.update_med_price()
-        self.update_financial_summary() # Update totals based on loaded/initial items
+        self.update_financial_summary()  # Update totals based on loaded/initial items
 
     def load_initial_data(self):
         """Load patient, services, meds, and existing visit data if editing."""
         data = load_initial_data(self.patient_id, self.is_editing, self.visit_id)
-        if not data: return False
+        if not data:
+            return False
 
         self.patient_data, self.visit_data, self.available_services, self.available_medications = data
         return True
 
     def populate_fields_for_edit(self):
         """Fill form fields with data from the existing visit."""
-        if not self.visit_data: return
+        if not self.visit_data:
+            return
 
         # Visit Details
         visit_date = QDate.fromString(self.visit_data.get('visit_date', ''), "yyyy-MM-dd")
@@ -198,17 +201,17 @@ class AddEditVisitWindow(QDialog):
 
         # Populate Services Table
         visit_services = get_services_for_visit(self.visit_id)
-        self.services_table.setRowCount(0) # Clear existing
+        self.services_table.setRowCount(0)  # Clear existing
         if visit_services:
             for service in visit_services:
                 self._add_row_to_table(self.services_table, service, is_service=True)
 
         # Populate Prescriptions Table
         visit_prescriptions = get_prescriptions_for_visit(self.visit_id)
-        self.prescriptions_table.setRowCount(0) # Clear existing
+        self.prescriptions_table.setRowCount(0)  # Clear existing
         if visit_prescriptions:
-             for prescription in visit_prescriptions:
-                 self._add_row_to_table(self.prescriptions_table, prescription, is_service=False)
+            for prescription in visit_prescriptions:
+                self._add_row_to_table(self.prescriptions_table, prescription, is_service=False)
 
     def update_service_price(self):
         """Update price input when service selection changes."""
@@ -239,18 +242,18 @@ class AddEditVisitWindow(QDialog):
             # Add directly to DB if editing
             visit_service_id = add_service_to_visit(self.visit_id, service_id, tooth_number, price, notes)
             if visit_service_id:
-                 item_data = {'visit_service_id': visit_service_id, 'service_name': service_name,
-                              'tooth_number': tooth_number, 'price_charged': price, 'notes': notes}
-                 self._add_row_to_table(self.services_table, item_data, is_service=True)
-                 self.update_financial_summary() # Recalculate totals
+                item_data = {'visit_service_id': visit_service_id, 'service_name': service_name,
+                             'tooth_number': tooth_number, 'price_charged': price, 'notes': notes}
+                self._add_row_to_table(self.services_table, item_data, is_service=True)
+                self.update_financial_summary()  # Recalculate totals
             else:
-                 QMessageBox.critical(self, "Database Error", "Failed to add service to the visit.")
+                QMessageBox.critical(self, "Database Error", "Failed to add service to the visit.")
         else:
-             # Add to table only if adding a new visit (will be saved later)
-             # Store service_id in hidden column temporarily
-             item_data = {'service_id': service_id, 'service_name': service_name,
+            # Add to table only if adding a new visit (will be saved later)
+            # Store service_id in hidden column temporarily
+            item_data = {'service_id': service_id, 'service_name': service_name,
                          'tooth_number': tooth_number, 'price_charged': price, 'notes': notes}
-             self._add_row_to_table(self.services_table, item_data, is_service=True)
+            self._add_row_to_table(self.services_table, item_data, is_service=True)
 
     def add_prescription_item(self):
         """Adds the selected prescription to the prescriptions table."""
@@ -265,21 +268,21 @@ class AddEditVisitWindow(QDialog):
         instructions = self.med_instr_input.text().strip()
 
         if self.is_editing:
-             # Add directly to DB if editing
-             visit_prescription_id = add_prescription_to_visit(self.visit_id, med_id, quantity, price, instructions)
-             if visit_prescription_id:
-                  item_data = {'visit_prescription_id': visit_prescription_id, 'medication_name': med_name,
-                               'quantity': quantity, 'price_charged': price, 'instructions': instructions}
-                  self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
-                  self.update_financial_summary() # Recalculate totals
-             else:
-                  QMessageBox.critical(self, "Database Error", "Failed to add prescription to the visit.")
+            # Add directly to DB if editing
+            visit_prescription_id = add_prescription_to_visit(self.visit_id, med_id, quantity, price, instructions)
+            if visit_prescription_id:
+                item_data = {'visit_prescription_id': visit_prescription_id, 'medication_name': med_name,
+                             'quantity': quantity, 'price_charged': price, 'instructions': instructions}
+                self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
+                self.update_financial_summary()  # Recalculate totals
+            else:
+                QMessageBox.critical(self, "Database Error", "Failed to add prescription to the visit.")
         else:
-             # Add to table only if adding a new visit
-             # Store med_id in hidden column temporarily
-             item_data = {'medication_id': med_id, 'medication_name': med_name,
-                          'quantity': quantity, 'price_charged': price, 'instructions': instructions}
-             self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
+            # Add to table only if adding a new visit
+            # Store med_id in hidden column temporarily
+            item_data = {'medication_id': med_id, 'medication_name': med_name,
+                         'quantity': quantity, 'price_charged': price, 'instructions': instructions}
+            self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
 
     def _add_row_to_table(self, table, item_data, is_service):
         """Helper to add a row to either table."""
@@ -288,7 +291,7 @@ class AddEditVisitWindow(QDialog):
 
         remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "")
         remove_button.setToolTip(f"Remove this {'service' if is_service else 'prescription'}")
-        remove_button.setProperty("row", row_position) # Store row index
+        remove_button.setProperty("row", row_position)  # Store row index
 
         if is_service:
             # Store visit_service_id if editing, or service_id if adding
@@ -297,38 +300,39 @@ class AddEditVisitWindow(QDialog):
             col2_val = str(item_data.get('tooth_number', ''))
             price = item_data.get('price_charged', 0.0)
             notes = item_data.get('notes', '')
-            remove_button.setProperty("item_id", item_data.get('visit_service_id')) # Only store DB ID
+            remove_button.setProperty("item_id", item_data.get('visit_service_id'))  # Only store DB ID
             remove_button.clicked.connect(lambda _, b=remove_button: self.remove_service_item(b))
-            table.setItem(row_position, 0, QTableWidgetItem(str(item_id))) # Hidden ID
+            table.setItem(row_position, 0, QTableWidgetItem(str(item_id)))  # Hidden ID
             table.setItem(row_position, 1, QTableWidgetItem(name))
-            table.setItem(row_position, 2, QTableWidgetItem(col2_val)) # Tooth #
+            table.setItem(row_position, 2, QTableWidgetItem(col2_val))  # Tooth #
             table.setItem(row_position, 3, QTableWidgetItem(f"{price:.2f}"))
-            table.setItem(row_position, 4, QTableWidgetItem(notes)) # Notes/Instructions
-            table.setCellWidget(row_position, 5, remove_button) # Remove Button Col
+            table.setItem(row_position, 4, QTableWidgetItem(notes))  # Notes/Instructions
+            table.setCellWidget(row_position, 5, remove_button)  # Remove Button Col
         else:
-             # Store visit_prescription_id if editing, or medication_id if adding
+            # Store visit_prescription_id if editing, or medication_id if adding
             item_id = item_data.get('visit_prescription_id') or item_data.get('medication_id')
             name = item_data.get('medication_name', 'N/A')
             col2_val = str(item_data.get('quantity', ''))
             price = item_data.get('price_charged', 0.0)
             notes = item_data.get('instructions', '')
-            remove_button.setProperty("item_id", item_data.get('visit_prescription_id')) # Only store DB ID
+            remove_button.setProperty("item_id", item_data.get('visit_prescription_id'))  # Only store DB ID
             remove_button.clicked.connect(lambda _, b=remove_button: self.remove_prescription_item(b))
-            table.setItem(row_position, 0, QTableWidgetItem(str(item_id))) # Hidden ID
+            table.setItem(row_position, 0, QTableWidgetItem(str(item_id)))  # Hidden ID
             table.setItem(row_position, 1, QTableWidgetItem(name))
-            table.setItem(row_position, 2, QTableWidgetItem(col2_val)) # Quantity
+            table.setItem(row_position, 2, QTableWidgetItem(col2_val))  # Quantity
             table.setItem(row_position, 3, QTableWidgetItem(f"{price:.2f}"))
-            table.setItem(row_position, 4, QTableWidgetItem(notes)) # Instructions
-            table.setCellWidget(row_position, 5, remove_button) # Remove Button Col
+            table.setItem(row_position, 4, QTableWidgetItem(notes))  # Instructions
+            table.setCellWidget(row_position, 5, remove_button)  # Remove Button Col
 
         table.resizeColumnsToContents()
 
     def remove_service_item(self, button):
         """Removes a service item from the table and DB (if editing)."""
         row_to_remove = button.property("row")
-        visit_service_id = button.property("item_id") # This is the DB ID (None if adding new visit)
+        visit_service_id = button.property("item_id")  # This is the DB ID (None if adding new visit)
 
-        if row_to_remove is None: return
+        if row_to_remove is None:
+            return
 
         confirm = QMessageBox.question(self, "Confirm Removal",
                                        "Are you sure you want to remove this service item?",
@@ -337,23 +341,24 @@ class AddEditVisitWindow(QDialog):
             if self.is_editing and visit_service_id:
                 success = remove_service_from_visit(visit_service_id)
                 if success is True:
-                     self.services_table.removeRow(row_to_remove)
-                     self.update_row_properties(self.services_table, row_to_remove) # Adjust row properties for remaining buttons
-                     self.update_financial_summary()
-                elif success is False: # Typically means constraint error (shouldn't happen here)
+                    self.services_table.removeRow(row_to_remove)
+                    self.update_row_properties(self.services_table, row_to_remove)  # Adjust row properties for remaining buttons
+                    self.update_financial_summary()
+                elif success is False:  # Typically means constraint error (shouldn't happen here)
                     QMessageBox.warning(self, "Error", "Could not remove service due to a constraint.")
-                else: # None - general DB error
+                else:  # None - general DB error
                     QMessageBox.critical(self, "Database Error", "Failed to remove service item from database.")
-            else: # Removing from table only (when adding a new visit)
-                 self.services_table.removeRow(row_to_remove)
-                 self.update_row_properties(self.services_table, row_to_remove)
+            else:  # Removing from table only (when adding a new visit)
+                self.services_table.removeRow(row_to_remove)
+                self.update_row_properties(self.services_table, row_to_remove)
 
     def remove_prescription_item(self, button):
         """Removes a prescription item from the table and DB (if editing)."""
         row_to_remove = button.property("row")
-        visit_prescription_id = button.property("item_id") # DB ID (None if adding)
+        visit_prescription_id = button.property("item_id")  # DB ID (None if adding)
 
-        if row_to_remove is None: return
+        if row_to_remove is None:
+            return
 
         confirm = QMessageBox.question(self, "Confirm Removal",
                                        "Are you sure you want to remove this prescription item?",
@@ -362,53 +367,53 @@ class AddEditVisitWindow(QDialog):
             if self.is_editing and visit_prescription_id:
                 success = remove_prescription_from_visit(visit_prescription_id)
                 if success is True:
-                     self.prescriptions_table.removeRow(row_to_remove)
-                     self.update_row_properties(self.prescriptions_table, row_to_remove)
-                     self.update_financial_summary()
+                    self.prescriptions_table.removeRow(row_to_remove)
+                    self.update_row_properties(self.prescriptions_table, row_to_remove)
+                    self.update_financial_summary()
                 elif success is False:
                     QMessageBox.warning(self, "Error", "Could not remove prescription due to a constraint.")
-                else: # None
+                else:  # None
                     QMessageBox.critical(self, "Database Error", "Failed to remove prescription item from database.")
-            else: # Removing from table only (when adding new visit)
+            else:  # Removing from table only (when adding new visit)
                 self.prescriptions_table.removeRow(row_to_remove)
                 self.update_row_properties(self.prescriptions_table, row_to_remove)
 
     def update_row_properties(self, table, removed_row_index):
         """Adjust the 'row' property of buttons in subsequent rows after a removal."""
         for row in range(removed_row_index, table.rowCount()):
-            button = table.cellWidget(row, table.columnCount() - 1) # Last column has button
+            button = table.cellWidget(row, table.columnCount() - 1)  # Last column has button
             if button:
                 button.setProperty("row", row)
 
     def update_financial_summary(self):
-         """Updates the total and due amount labels based on current visit data (if editing)."""
-         if self.is_editing and self.visit_id:
-             # Fetch the latest visit data which includes totals calculated by DB triggers/functions
-             updated_visit_data = get_visit_by_id(self.visit_id)
-             if updated_visit_data:
-                 self.visit_data = updated_visit_data # Update local cache
-                 total = self.visit_data.get('total_amount', 0.0)
-                 paid = self.paid_amount_input.value() # Use current input value for paid
-                 due = max(0.0, total - paid)
-                 self.total_amount_label.setText(f"{total:.2f}")
-                 self.due_amount_label.setText(f"{due:.2f}")
-             else:
-                 print(f"Warning: Could not fetch updated visit data for ID {self.visit_id} to update summary.")
-                 # Optionally clear labels or show 'N/A'
-         else:
-             # For new visits, totals are calculated on save. Maybe show N/A or 0.0?
-             self.total_amount_label.setText("N/A (Calculated on Save)")
-             self.due_amount_label.setText("N/A (Calculated on Save)")
+        """Updates the total and due amount labels based on current visit data (if editing)."""
+        if self.is_editing and self.visit_id:
+            # Fetch the latest visit data which includes totals calculated by DB triggers/functions
+            updated_visit_data = get_visit_by_id(self.visit_id)
+            if updated_visit_data:
+                self.visit_data = updated_visit_data  # Update local cache
+                total = self.visit_data.get('total_amount', 0.0)
+                paid = self.paid_amount_input.value()  # Use current input value for paid
+                due = max(0.0, total - paid)
+                self.total_amount_label.setText(f"{total:.2f}")
+                self.due_amount_label.setText(f"{due:.2f}")
+            else:
+                print(f"Warning: Could not fetch updated visit data for ID {self.visit_id} to update summary.")
+                # Optionally clear labels or show 'N/A'
+        else:
+            # For new visits, totals are calculated on save. Maybe show N/A or 0.0?
+            self.total_amount_label.setText("N/A (Calculated on Save)")
+            self.due_amount_label.setText("N/A (Calculated on Save)")
 
     def update_due_amount_display(self):
         """Updates only the due amount label when 'paid' amount changes, used for visual feedback."""
         try:
-            total = float(self.total_amount_label.text()) if self.total_amount_label.text().replace('.','',1).isdigit() else 0.0
+            total = float(self.total_amount_label.text()) if self.total_amount_label.text().replace('.', '', 1).isdigit() else 0.0
             paid = self.paid_amount_input.value()
             due = max(0.0, total - paid)
             self.due_amount_label.setText(f"{due:.2f}")
         except ValueError:
-             self.due_amount_label.setText("Error") # Handle case where total isn't a number yet
+            self.due_amount_label.setText("Error")  # Handle case where total isn't a number yet
 
     def accept(self):
         """Save the visit details and items."""
@@ -425,9 +430,9 @@ class AddEditVisitWindow(QDialog):
                 super().accept()
             else:
                 QMessageBox.critical(self, "Error", "Failed to update visit details.")
-        else: # Adding a new visit
+        else:  # Adding a new visit
             new_visit_id = add_new_visit(self.patient_id, visit_date, notes, lab_results,
-                                         self.services_table, self.prescriptions_table, paid_amount)
+                                          self.services_table, self.prescriptions_table, paid_amount)
             if new_visit_id:
                 QMessageBox.information(self, "Success", f"New visit (ID: {new_visit_id}) added successfully.")
                 self.visit_saved.emit(self.patient_id)
@@ -447,8 +452,10 @@ if __name__ == '__main__':
         if not get_patient_by_id(1):
             add_patient("Test AddVisit", "Tester", "Female", 40, "1 Add St", "555-ADD", "Needs adding visit")
         # Add dummy service/medication if they don't exist
-        if not get_service_by_id(1): add_service("Filling", "Composite Filling", 150.0)
-        if not get_medication_by_id(1): add_medication("Antibiotic", "Standard course", 15.0)
+        if not get_service_by_id(1):
+            add_service("Filling", "Composite Filling", 150.0)
+        if not get_medication_by_id(1):
+            add_medication("Antibiotic", "Standard course", 15.0)
         # Optionally add an existing visit for edit testing
         # visit_id_for_edit_test = add_visit(1, QDate.currentDate().toString("yyyy-MM-dd"), "Existing visit notes")
 
@@ -458,7 +465,7 @@ if __name__ == '__main__':
 
     TEST_PATIENT_ID = 1
     # TEST_VISIT_ID_EDIT = visit_id_for_edit_test # Set this if you added a visit above
-    TEST_VISIT_ID_EDIT = None # Set to an existing ID to test editing
+    TEST_VISIT_ID_EDIT = None  # Set to an existing ID to test editing
 
     app = QApplication(sys.argv)
 

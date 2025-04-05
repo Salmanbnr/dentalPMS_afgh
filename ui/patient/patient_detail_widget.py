@@ -1,4 +1,5 @@
-# dental_clinic/ui/patient/patient_detail_widget.py
+# ui/patient/patient_detail_widget.py
+
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                              QMessageBox, QFormLayout, QGroupBox, QScrollArea,
@@ -30,23 +31,23 @@ class PatientDetailWidget(QWidget):
         super().__init__(parent)
         self.current_patient_id = None
         self.patient_data = None
-        self.visit_list_data = [] # Store basic visit info for the list
+        self.visit_list_data = []  # Store basic visit info for the list
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0) # Use spacing from parent layouts
+        self.main_layout.setContentsMargins(0, 0, 0, 0)  # Use spacing from parent layouts
 
         # --- Top Section: Patient Info ---
         self.patient_info_group = QGroupBox("Patient Information")
         self.patient_info_layout = QVBoxLayout(self.patient_info_group)
 
-        top_row_layout = QHBoxLayout() # Layout for labels + edit button
-        self.patient_details_layout = QFormLayout() # Use form layout for alignment
+        top_row_layout = QHBoxLayout()  # Layout for labels + edit button
+        self.patient_details_layout = QFormLayout()  # Use form layout for alignment
         self.name_label = QLabel("N/A")
         self.fname_label = QLabel("N/A")
         self.age_label = QLabel("N/A")
         self.phone_label = QLabel("N/A")
         self.address_label = QLabel("N/A")
-        self.address_label.setWordWrap(True) # Allow address to wrap
+        self.address_label.setWordWrap(True)  # Allow address to wrap
         self.patient_details_layout.addRow("<b>Name:</b>", self.name_label)
         self.patient_details_layout.addRow("<b>Father's Name:</b>", self.fname_label)
         self.patient_details_layout.addRow("<b>Age:</b>", self.age_label)
@@ -56,16 +57,14 @@ class PatientDetailWidget(QWidget):
         self.edit_patient_button = QPushButton(qta.icon('fa5s.edit'), "Edit Patient")
         self.edit_patient_button.setToolTip("Edit this patient's details")
         self.edit_patient_button.clicked.connect(self.open_edit_patient_window)
-        self.edit_patient_button.setEnabled(False) # Disabled until patient loaded
+        self.edit_patient_button.setEnabled(False)  # Disabled until patient loaded
         self.edit_patient_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-
-        top_row_layout.addLayout(self.patient_details_layout, 1) # Form layout takes expanding space
-        top_row_layout.addWidget(self.edit_patient_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight) # Button top-right
+        top_row_layout.addLayout(self.patient_details_layout, 1)  # Form layout takes expanding space
+        top_row_layout.addWidget(self.edit_patient_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)  # Button top-right
 
         self.patient_info_layout.addLayout(top_row_layout)
         self.main_layout.addWidget(self.patient_info_group)
-
 
         # --- Bottom Section: Visits ---
         self.visits_group = QGroupBox("Patient Visits")
@@ -79,15 +78,14 @@ class PatientDetailWidget(QWidget):
         self.add_visit_button = QPushButton(qta.icon('fa5s.plus-circle'), "Add New Visit")
         self.add_visit_button.setToolTip("Add a new visit record for this patient")
         self.add_visit_button.clicked.connect(self.open_add_visit_window)
-        self.add_visit_button.setEnabled(False) # Disabled until patient loaded
+        self.add_visit_button.setEnabled(False)  # Disabled until patient loaded
         self.visits_layout.addWidget(self.add_visit_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.main_layout.addWidget(self.visits_group)
-        self.main_layout.addStretch() # Push content upwards
+        self.main_layout.addStretch()  # Push content upwards
 
         # Initially hide or show placeholder
         self.clear_details()
-
 
     def load_patient(self, patient_id):
         """Loads and displays details for the given patient ID."""
@@ -110,7 +108,7 @@ class PatientDetailWidget(QWidget):
             self.edit_patient_button.setEnabled(True)
             self.add_visit_button.setEnabled(True)
 
-            self.load_visits() # Load visits after patient details are set
+            self.load_visits()  # Load visits after patient details are set
         else:
             self.clear_details()
             QMessageBox.warning(self, "Load Error", f"Could not find patient data for ID: {patient_id}")
@@ -137,7 +135,6 @@ class PatientDetailWidget(QWidget):
         # self.patient_info_group.setVisible(False)
         # self.visits_group.setVisible(False)
 
-
     def load_visits(self):
         """Loads the visit list for the current patient."""
         self.visits_list_widget.clear()
@@ -147,23 +144,23 @@ class PatientDetailWidget(QWidget):
 
         self.visit_list_data = get_patient_visits(self.current_patient_id)
 
-        if self.visit_list_data is None: # DB error
-             self.visits_list_widget.addItem("Error loading visits.")
-             QMessageBox.critical(self, "Database Error", "Failed to retrieve patient visits.")
+        if self.visit_list_data is None:  # DB error
+            self.visits_list_widget.addItem("Error loading visits.")
+            QMessageBox.critical(self, "Database Error", "Failed to retrieve patient visits.")
         elif not self.visit_list_data:
             self.visits_list_widget.addItem("No visits found for this patient.")
         else:
             for visit in self.visit_list_data:
-                 # Format: Visit #ID on DATE - Total: X, Due: Y
-                 visit_id = visit.get('visit_id')
-                 visit_date = visit.get('visit_date', 'N/A')
-                 total = visit.get('total_amount', 0.0)
-                 due = visit.get('due_amount', 0.0)
-                 item_text = f"Visit #{visit_id} on {visit_date}   (Total: {total:.2f}, Due: {due:.2f})"
-                 list_item = QListWidgetItem(item_text)
-                 list_item.setData(Qt.ItemDataRole.UserRole, visit_id) # Store visit_id in item data
-                 self.visits_list_widget.addItem(list_item)
-
+                # Format: Visit #ID on DATE - Total: X, Due: Y
+                visit_id = visit.get('visit_id')
+                visit_date = visit.get('visit_date', 'N/A')
+                total = visit.get('total_amount', 0.0)
+                due = visit.get('due_amount', 0.0)
+                visit_number = visit.get('visit_number', 'N/A')
+                item_text = f"Visit #{visit_number} on {visit_date}   (Total: {total:.2f}, Due: {due:.2f})"
+                list_item = QListWidgetItem(item_text)
+                list_item.setData(Qt.ItemDataRole.UserRole, visit_id)  # Store visit_id in item data
+                self.visits_list_widget.addItem(list_item)
 
     def open_edit_patient_window(self):
         """Opens the modal dialog to edit the current patient."""
@@ -172,15 +169,14 @@ class PatientDetailWidget(QWidget):
             return
 
         dialog = PatientEditWindow(patient_id=self.current_patient_id, parent=self)
-        dialog.patient_updated.connect(self.handle_patient_updated) # Connect signal
+        dialog.patient_updated.connect(self.handle_patient_updated)  # Connect signal
         dialog.exec()
 
     def handle_patient_updated(self, updated_patient_id):
         """Called when the edit dialog signals success. Reloads patient data."""
         if updated_patient_id == self.current_patient_id:
             print(f"PatientDetailWidget reloading data for patient ID: {updated_patient_id}")
-            self.load_patient(self.current_patient_id) # Reload displayed data
-
+            self.load_patient(self.current_patient_id)  # Reload displayed data
 
     def open_add_visit_window(self):
         """Opens the modal dialog to add a new visit for the current patient."""
@@ -196,15 +192,14 @@ class PatientDetailWidget(QWidget):
         """Opens the modal dialog to view details of the selected visit."""
         visit_id = item.data(Qt.ItemDataRole.UserRole)
         if visit_id:
-             # Optional: Could open AddEditVisitWindow in edit mode instead?
-             # dialog = AddEditVisitWindow(patient_id=self.current_patient_id, visit_id=visit_id, parent=self)
-             # dialog.visit_saved.connect(self.handle_visit_saved)
-             # For now, just show details:
-             dialog = VisitDetailWindow(visit_id=visit_id, parent=self)
-             dialog.exec()
+            # Optional: Could open AddEditVisitWindow in edit mode instead?
+            # dialog = AddEditVisitWindow(patient_id=self.current_patient_id, visit_id=visit_id, parent=self)
+            # dialog.visit_saved.connect(self.handle_visit_saved)
+            # For now, just show details:
+            dialog = VisitDetailWindow(visit_id=visit_id, parent=self)
+            dialog.exec()
         else:
-             print("Error: Could not get visit ID from list item.")
-
+            print("Error: Could not get visit ID from list item.")
 
     def handle_visit_saved(self, patient_id_from_signal):
         """Called when AddEditVisitWindow signals success. Reloads visit list."""
@@ -212,14 +207,13 @@ class PatientDetailWidget(QWidget):
             print(f"PatientDetailWidget reloading visits for patient ID: {patient_id_from_signal}")
             self.load_visits()
 
-
 # --- Testing Block ---
 if __name__ == '__main__':
     from PyQt6.QtWidgets import QApplication, QMainWindow
     # Ensure DB setup
     try:
         from database.schema import initialize_database
-        from database.data_manager import add_patient, add_visit # Import necessary functions
+        from database.data_manager import add_patient, add_visit  # Import necessary functions
         initialize_database()
         if not get_patient_by_id(1):
             add_patient("Test DetailWidget", "Tester", "Male", 50, "1 Detail St", "555-WIDGET", "Needs displaying")
@@ -242,7 +236,7 @@ if __name__ == '__main__':
     # Add a button to load a test patient
     test_load_button = QPushButton("Load Patient 1")
     def load_test_patient():
-        detail_widget.load_patient(1) # Load patient with ID 1
+        detail_widget.load_patient(1)  # Load patient with ID 1
     test_load_button.clicked.connect(load_test_patient)
 
     central_container = QWidget()

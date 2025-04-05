@@ -1,4 +1,4 @@
-# dental_clinic/database/data_manager.py
+# database/data_manager.py
 import sqlite3
 import shutil
 import os
@@ -187,19 +187,43 @@ def delete_medication(medication_id):
 # --- Visit Management ---
 def add_visit(patient_id, visit_date, notes="", lab_results=""):
     """Adds a new visit. Returns visit_id or None/False."""
+    # Calculate the visit number
+    visit_number = calculate_visit_number(patient_id, visit_date) + 1
+
     query = """
-        INSERT INTO visits (patient_id, visit_date, notes, lab_results, total_amount, paid_amount, due_amount)
-        VALUES (?, ?, ?, ?, 0, 0, 0)
+        INSERT INTO visits (patient_id, visit_date, visit_number, notes, lab_results, total_amount, paid_amount, due_amount)
+        VALUES (?, ?, ?, ?, ?, 0, 0, 0)
     """
     date_str = visit_date.strftime('%Y-%m-%d') if isinstance(visit_date, (date, datetime)) else visit_date
-    params = (patient_id, date_str, notes, lab_results)
+    params = (patient_id, date_str, visit_number, notes, lab_results)
     result = _execute_query(query, params, commit=True)
     return result if isinstance(result, int) else None
 
+def calculate_visit_number(patient_id, visit_date):
+    """Calculate the visit number for a patient based on the visit date."""
+    query = """
+    SELECT COUNT(*)
+    FROM visits v
+    WHERE v.patient_id = ? AND v.visit_date <= ?
+    """
+    result = _execute_query(query, (patient_id, visit_date), fetch_one=True)
+    return result.get('COUNT(*)', 0) if result else 0
+
 def get_visit_by_id(visit_id):
-    """Gets a visit by ID. Returns dict or None."""
-    query = "SELECT * FROM visits WHERE visit_id = ?"
+    """Gets a visit by ID, including the visit number specific to the patient. Returns dict or None."""
+    query = """
+    SELECT
+        v.*,
+        (SELECT COUNT(*)
+         FROM visits v2
+         WHERE v2.patient_id = v.patient_id AND v2.visit_date <= v.visit_date) AS visit_number
+    FROM
+        visits v
+    WHERE
+        v.visit_id = ?
+    """
     return _execute_query(query, (visit_id,), fetch_one=True)
+
 
 def get_patient_visits(patient_id):
     """Gets all visits for a patient. Returns list of dicts."""

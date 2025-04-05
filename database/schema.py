@@ -1,4 +1,5 @@
 # database/schema.py
+
 import sqlite3
 from .connection import get_db_connection, close_db_connection, DATABASE_PATH
 
@@ -46,25 +47,26 @@ CREATE TABLE IF NOT EXISTS visits (
     visit_id INTEGER PRIMARY KEY AUTOINCREMENT,
     patient_id INTEGER NOT NULL,
     visit_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    visit_number INTEGER NOT NULL, -- Added visit_number column
     notes TEXT, -- Doctor's general notes for the visit
     lab_results TEXT, -- Store text results or file paths (consider separate table/storage for files later)
     total_amount REAL NOT NULL DEFAULT 0.0 CHECK(total_amount >= 0),
     paid_amount REAL NOT NULL DEFAULT 0.0 CHECK(paid_amount >= 0),
-    -- due_amount can be calculated, but storing simplifies debt queries
     due_amount REAL NOT NULL DEFAULT 0.0 CHECK(due_amount >= 0),
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (patient_id) REFERENCES patients (patient_id) ON DELETE CASCADE -- If patient deleted, visits are removed
 );
 """
+
 # Index for faster patient visit lookup
 SQL_CREATE_VISITS_PATIENT_ID_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_visits_patient_id ON visits(patient_id);
 """
+
 # Index for faster debt lookup
 SQL_CREATE_VISITS_DUE_AMOUNT_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_visits_due_amount ON visits(due_amount);
 """
-
 
 SQL_CREATE_VISIT_SERVICES_TABLE = """
 CREATE TABLE IF NOT EXISTS visit_services (
@@ -79,6 +81,7 @@ CREATE TABLE IF NOT EXISTS visit_services (
     FOREIGN KEY (service_id) REFERENCES services (service_id) ON DELETE RESTRICT -- Prevent deleting service if used in visits
 );
 """
+
 # Index for faster visit service lookup
 SQL_CREATE_VISIT_SERVICES_VISIT_ID_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_visit_services_visit_id ON visit_services(visit_id);
@@ -97,6 +100,7 @@ CREATE TABLE IF NOT EXISTS visit_prescriptions (
     FOREIGN KEY (medication_id) REFERENCES medications (medication_id) ON DELETE RESTRICT -- Prevent deleting med if prescribed
 );
 """
+
 # Index for faster visit prescription lookup
 SQL_CREATE_VISIT_PRESCRIPTIONS_VISIT_ID_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_visit_prescriptions_visit_id ON visit_prescriptions(visit_id);

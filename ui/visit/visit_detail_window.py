@@ -33,7 +33,7 @@ class VisitDetailWindow(QDialog):
             QMessageBox.critical(self, "Error", f"Could not load data for visit ID: {self.visit_id}. Cannot open details.")
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(0, self.reject)
-            return # Stop further init if load fails
+            return  # Stop further init if load fails
 
         # --- Widgets ---
         # Patient Info Group
@@ -47,14 +47,14 @@ class VisitDetailWindow(QDialog):
         # Visit Info Group
         visit_group = QGroupBox("Visit Information")
         visit_layout = QFormLayout(visit_group)
-        self.visit_date_label = QLabel(self.visit_data.get('visit_date', 'N/A'))
+        self.visit_number_label = QLabel(f"Visit #{self.visit_data.get('visit_number', 'N/A')} on {self.visit_data.get('visit_date', 'N/A')}")
         self.notes_display = QTextEdit(self.visit_data.get('notes', ''))
         self.notes_display.setReadOnly(True)
         self.notes_display.setFixedHeight(60)
         self.lab_results_display = QTextEdit(self.visit_data.get('lab_results', ''))
         self.lab_results_display.setReadOnly(True)
         self.lab_results_display.setFixedHeight(60)
-        visit_layout.addRow("Visit Date:", self.visit_date_label)
+        visit_layout.addRow("Visit Details:", self.visit_number_label)
         visit_layout.addRow("Notes:", self.notes_display)
         visit_layout.addRow("Lab Results:", self.lab_results_display)
 
@@ -66,7 +66,7 @@ class VisitDetailWindow(QDialog):
         self.services_table.setHorizontalHeaderLabels(["Service", "Tooth #", "Price Charged", "Notes"])
         self.services_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.services_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.services_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Read-only
+        self.services_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # Read-only
         self.populate_services_table()
         services_layout.addWidget(self.services_table)
 
@@ -78,7 +78,7 @@ class VisitDetailWindow(QDialog):
         self.prescriptions_table.setHorizontalHeaderLabels(["Medication", "Qty", "Price Charged", "Instructions"])
         self.prescriptions_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.prescriptions_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.prescriptions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Read-only
+        self.prescriptions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # Read-only
         self.populate_prescriptions_table()
         prescriptions_layout.addWidget(self.prescriptions_table)
 
@@ -101,7 +101,7 @@ class VisitDetailWindow(QDialog):
 
         # --- Dialog Buttons ---
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        self.button_box.accepted.connect(self.accept) # Just close the dialog
+        self.button_box.accepted.connect(self.accept)  # Just close the dialog
         self.main_layout.addWidget(self.button_box)
 
     def load_data(self):
@@ -148,22 +148,24 @@ if __name__ == '__main__':
             add_patient("Test VisitDetail", "Tester", "Other", 31, "1 Detail St", "555-DETAIL", "Needs details")
         # Ensure visit 1 exists for patient 1
         if not get_visit_by_id(1):
-           visit_id_test = add_visit(1, QDate.currentDate().toString("yyyy-MM-dd"), "Initial checkup")
-           if visit_id_test == 1:
+            visit_id_test = add_visit(1, QDate.currentDate().toString("yyyy-MM-dd"), "Initial checkup")
+            if visit_id_test == 1:
                 # Add dummy service/medication if they don't exist
-                if not get_service_by_id(1): add_service("Checkup", "Routine Checkup", 50.0)
-                if not get_medication_by_id(1): add_medication("Painkiller", "Generic", 5.0)
+                if not get_service_by_id(1):
+                    add_service("Checkup", "Routine Checkup", 50.0)
+                if not get_medication_by_id(1):
+                    add_medication("Painkiller", "Generic", 5.0)
                 # Add items to the visit
                 add_service_to_visit(1, 1, None, 50.0, "Routine")
                 add_prescription_to_visit(1, 1, 10, 5.0, "Take as needed")
-           else:
-               print("Failed to add visit 1 for testing.")
+            else:
+                print("Failed to add visit 1 for testing.")
 
     except Exception as e:
         print(f"Error setting up DB for test: {e}")
         sys.exit(1)
 
-    TEST_VISIT_ID = 1 # Assume visit 1 exists
+    TEST_VISIT_ID = 1  # Assume visit 1 exists
 
     app = QApplication(sys.argv)
     visit_data_test = get_visit_by_id(TEST_VISIT_ID)

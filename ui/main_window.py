@@ -198,7 +198,7 @@ class MainWindow(QMainWindow):
         self.view_edit_win_instance = PatientViewEditWindow(patient_id=patient_id, parent=None) # Or parent=self
 
         # Connect the destroyed signal to clear the reference when window is closed
-        self.view_edit_win_instance.destroyed.connect(self.on_view_edit_destroyed)
+        # self.view_edit_win_instance.destroyed.connect(self.on_view_edit_destroyed)
 
         # Show the new window (non-modal)
         self.view_edit_win_instance.show()
