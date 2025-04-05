@@ -1,4 +1,5 @@
-# dental_clinic/ui/visit/add_edit_visit_window.py
+# ui/visit/add_edit_visit_window.py
+
 import sys
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
                              QPushButton, QMessageBox, QFormLayout, QDialogButtonBox, QGroupBox,
@@ -8,25 +9,8 @@ from PyQt6.QtCore import pyqtSignal, Qt, QDate
 import qtawesome as qta
 from pathlib import Path
 
-from database.data_manager import get_medication_by_id, get_service_by_id
-
-# Use absolute imports assuming running from project root
-try:
-    from database.data_manager import (get_visit_by_id, add_visit, update_visit_details,
-                                       get_patient_by_id, get_all_services, get_all_medications,
-                                       add_service_to_visit, remove_service_from_visit,
-                                       add_prescription_to_visit, remove_prescription_from_visit,
-                                       get_services_for_visit, get_prescriptions_for_visit,
-                                       update_visit_payment) # Added payment update
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-    from database.data_manager import (get_visit_by_id, add_visit, update_visit_details,
-                                       get_patient_by_id, get_all_services, get_all_medications,
-                                       add_service_to_visit, remove_service_from_visit,
-                                       add_prescription_to_visit, remove_prescription_from_visit,
-                                       get_services_for_visit, get_prescriptions_for_visit,
-                                       update_visit_payment)
-
+from database.data_manager import add_prescription_to_visit, add_service_to_visit, get_medication_by_id, get_patient_by_id, get_prescriptions_for_visit, get_service_by_id, get_services_for_visit, remove_prescription_from_visit, remove_service_from_visit
+from model.visit_manager import load_initial_data, save_visit_details, add_new_visit
 
 class AddEditVisitWindow(QDialog):
     """Dialog for adding a new visit or editing an existing one."""
@@ -119,7 +103,6 @@ class AddEditVisitWindow(QDialog):
         services_layout.addWidget(self.services_table)
         self.main_layout.addWidget(services_group)
 
-
         # --- Prescriptions Section ---
         prescriptions_group = QGroupBox("Prescriptions Issued")
         prescriptions_layout = QVBoxLayout(prescriptions_group)
@@ -176,7 +159,6 @@ class AddEditVisitWindow(QDialog):
         self.paid_amount_input.valueChanged.connect(self.update_due_amount_display)
         self.main_layout.addWidget(payment_group)
 
-
         # --- Dialog Buttons ---
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
@@ -192,23 +174,12 @@ class AddEditVisitWindow(QDialog):
         self.update_med_price()
         self.update_financial_summary() # Update totals based on loaded/initial items
 
-
     def load_initial_data(self):
         """Load patient, services, meds, and existing visit data if editing."""
-        self.patient_data = get_patient_by_id(self.patient_id)
-        if not self.patient_data: return False
+        data = load_initial_data(self.patient_id, self.is_editing, self.visit_id)
+        if not data: return False
 
-        services = get_all_services(active_only=True)
-        meds = get_all_medications(active_only=True)
-        if services is None or meds is None: return False # Check if DB query failed
-
-        self.available_services = {s['name']: {'id': s['service_id'], 'price': s['default_price']} for s in services}
-        self.available_medications = {m['name']: {'id': m['medication_id'], 'price': m.get('default_price', 0.0)} for m in meds} # Handle optional price
-
-        if self.is_editing:
-            self.visit_data = get_visit_by_id(self.visit_id)
-            if not self.visit_data: return False # Editing non-existent visit
-
+        self.patient_data, self.visit_data, self.available_services, self.available_medications = data
         return True
 
     def populate_fields_for_edit(self):
@@ -251,7 +222,6 @@ class AddEditVisitWindow(QDialog):
         if med_name in self.available_medications:
             self.med_price_input.setValue(self.available_medications[med_name]['price'])
 
-
     def add_service_item(self):
         """Adds the selected service to the services table."""
         service_name = self.service_combo.currentText()
@@ -282,7 +252,6 @@ class AddEditVisitWindow(QDialog):
                          'tooth_number': tooth_number, 'price_charged': price, 'notes': notes}
              self._add_row_to_table(self.services_table, item_data, is_service=True)
 
-
     def add_prescription_item(self):
         """Adds the selected prescription to the prescriptions table."""
         med_name = self.med_combo.currentText()
@@ -311,7 +280,6 @@ class AddEditVisitWindow(QDialog):
              item_data = {'medication_id': med_id, 'medication_name': med_name,
                           'quantity': quantity, 'price_charged': price, 'instructions': instructions}
              self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
-
 
     def _add_row_to_table(self, table, item_data, is_service):
         """Helper to add a row to either table."""
@@ -355,7 +323,6 @@ class AddEditVisitWindow(QDialog):
 
         table.resizeColumnsToContents()
 
-
     def remove_service_item(self, button):
         """Removes a service item from the table and DB (if editing)."""
         row_to_remove = button.property("row")
@@ -380,7 +347,6 @@ class AddEditVisitWindow(QDialog):
             else: # Removing from table only (when adding a new visit)
                  self.services_table.removeRow(row_to_remove)
                  self.update_row_properties(self.services_table, row_to_remove)
-
 
     def remove_prescription_item(self, button):
         """Removes a prescription item from the table and DB (if editing)."""
@@ -414,7 +380,6 @@ class AddEditVisitWindow(QDialog):
             if button:
                 button.setProperty("row", row)
 
-
     def update_financial_summary(self):
          """Updates the total and due amount labels based on current visit data (if editing)."""
          if self.is_editing and self.visit_id:
@@ -435,7 +400,6 @@ class AddEditVisitWindow(QDialog):
              self.total_amount_label.setText("N/A (Calculated on Save)")
              self.due_amount_label.setText("N/A (Calculated on Save)")
 
-
     def update_due_amount_display(self):
         """Updates only the due amount label when 'paid' amount changes, used for visual feedback."""
         try:
@@ -453,72 +417,23 @@ class AddEditVisitWindow(QDialog):
         lab_results = self.lab_results_input.toPlainText().strip()
         paid_amount = self.paid_amount_input.value()
 
-        current_visit_id = self.visit_id
-
         if self.is_editing:
-            # 1. Update Visit Details (date, notes, lab_results)
-            success_details = update_visit_details(self.visit_id, visit_date, notes, lab_results)
-            if success_details is not True:
-                QMessageBox.critical(self, "Error", "Failed to update visit details.")
-                return # Stop saving
-
-            # 2. Update Payment (updates paid and due based on current total)
-            success_payment = update_visit_payment(self.visit_id, paid_amount)
-            if success_payment is not True:
-                 QMessageBox.warning(self, "Warning", "Visit details updated, but failed to update payment information.")
-                 # Decide whether to proceed or stop. Let's proceed but warn.
-
-            QMessageBox.information(self, "Success", f"Visit ID {self.visit_id} updated successfully.")
-            self.visit_saved.emit(self.patient_id)
-            super().accept()
-
-        else: # Adding a new visit
-            # 1. Add the basic visit record first
-            new_visit_id = add_visit(self.patient_id, visit_date, notes, lab_results)
-            if not new_visit_id:
-                QMessageBox.critical(self, "Database Error", "Failed to create the new visit record.")
-                return
-            current_visit_id = new_visit_id # Use this ID for adding items
-
-            # 2. Add Services from the table
-            services_added_ok = True
-            for row in range(self.services_table.rowCount()):
-                service_id = int(self.services_table.item(row, 0).text()) # ID was stored in hidden col
-                tooth_str = self.services_table.item(row, 2).text()
-                tooth_num = int(tooth_str) if tooth_str.isdigit() else None
-                price = float(self.services_table.item(row, 3).text())
-                service_notes = self.services_table.item(row, 4).text()
-                if not add_service_to_visit(current_visit_id, service_id, tooth_num, price, service_notes):
-                    QMessageBox.warning(self, "Error Adding Item", f"Failed to add service '{self.services_table.item(row, 1).text()}' to the visit.")
-                    services_added_ok = False
-                    # Optionally break or continue adding others
-
-            # 3. Add Prescriptions from the table
-            prescriptions_added_ok = True
-            for row in range(self.prescriptions_table.rowCount()):
-                med_id = int(self.prescriptions_table.item(row, 0).text()) # ID from hidden col
-                qty = int(self.prescriptions_table.item(row, 2).text())
-                price = float(self.prescriptions_table.item(row, 3).text())
-                instructions = self.prescriptions_table.item(row, 4).text()
-                if not add_prescription_to_visit(current_visit_id, med_id, qty, price, instructions):
-                     QMessageBox.warning(self, "Error Adding Item", f"Failed to add prescription '{self.prescriptions_table.item(row, 1).text()}' to the visit.")
-                     prescriptions_added_ok = False
-
-            # 4. Update payment for the new visit
-            # _recalculate_visit_total should have been called by add_service/add_prescription
-            # Now just set the paid amount
-            success_payment = update_visit_payment(current_visit_id, paid_amount)
-            if success_payment is not True:
-                 QMessageBox.warning(self, "Warning", "Visit created and items added, but failed to update payment information.")
-
-            if services_added_ok and prescriptions_added_ok:
-                QMessageBox.information(self, "Success", f"New visit (ID: {current_visit_id}) added successfully.")
+            success = save_visit_details(self.visit_id, visit_date, notes, lab_results, paid_amount)
+            if success:
+                QMessageBox.information(self, "Success", f"Visit ID {self.visit_id} updated successfully.")
+                self.visit_saved.emit(self.patient_id)
+                super().accept()
             else:
-                QMessageBox.warning(self, "Partial Success", f"New visit (ID: {current_visit_id}) created, but some items may have failed to save.")
-
-            self.visit_saved.emit(self.patient_id)
-            super().accept()
-
+                QMessageBox.critical(self, "Error", "Failed to update visit details.")
+        else: # Adding a new visit
+            new_visit_id = add_new_visit(self.patient_id, visit_date, notes, lab_results,
+                                         self.services_table, self.prescriptions_table, paid_amount)
+            if new_visit_id:
+                QMessageBox.information(self, "Success", f"New visit (ID: {new_visit_id}) added successfully.")
+                self.visit_saved.emit(self.patient_id)
+                super().accept()
+            else:
+                QMessageBox.warning(self, "Partial Success", f"New visit created, but some items may have failed to save.")
 
 # --- Testing Block ---
 if __name__ == '__main__':

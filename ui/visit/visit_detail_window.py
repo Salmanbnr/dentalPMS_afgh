@@ -1,22 +1,13 @@
-# dental_clinic/ui/visit/visit_detail_window.py
+# ui/visit/visit_detail_window.py
+
 import sys
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QTextEdit, QTableWidget, QTableWidgetItem, QHeaderView,
                              QMessageBox, QFormLayout, QDialogButtonBox, QGroupBox)
 from PyQt6.QtCore import Qt, QDate
-from pathlib import Path
 
-from database.data_manager import get_medication_by_id, get_service_by_id
-
-# Use absolute imports assuming running from project root
-try:
-    from database.data_manager import (get_visit_by_id, get_services_for_visit,
-                                       get_prescriptions_for_visit, get_patient_by_id)
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-    from database.data_manager import (get_visit_by_id, get_services_for_visit,
-                                       get_prescriptions_for_visit, get_patient_by_id)
-
+from database.data_manager import get_medication_by_id, get_patient_by_id, get_service_by_id, get_visit_by_id
+from model.visit_manager import load_visit_data
 
 class VisitDetailWindow(QDialog):
     """Dialog to display the details of a specific visit."""
@@ -115,25 +106,11 @@ class VisitDetailWindow(QDialog):
 
     def load_data(self):
         """Load all necessary data for the visit. Returns True if successful."""
-        self.visit_data = get_visit_by_id(self.visit_id)
-        if not self.visit_data:
-            print(f"Error: Visit data not found for ID: {self.visit_id}")
+        data = load_visit_data(self.visit_id)
+        if not data:
             return False
 
-        patient_id = self.visit_data.get('patient_id')
-        if not patient_id:
-             print(f"Error: Patient ID missing in visit data for visit ID: {self.visit_id}")
-             return False
-
-        self.patient_data = get_patient_by_id(patient_id)
-        if not self.patient_data:
-            print(f"Error: Patient data not found for ID: {patient_id}")
-            # Allow viewing visit even if patient deleted? Or return False?
-            # Let's assume we need the patient data.
-            return False
-
-        self.services = get_services_for_visit(self.visit_id)
-        self.prescriptions = get_prescriptions_for_visit(self.visit_id)
+        self.visit_data, self.patient_data, self.services, self.prescriptions = data
         return True
 
     def populate_services_table(self):
@@ -147,7 +124,6 @@ class VisitDetailWindow(QDialog):
         self.services_table.resizeColumnsToContents()
         self.services_table.resizeRowsToContents()
 
-
     def populate_prescriptions_table(self):
         """Fills the prescriptions table with data."""
         self.prescriptions_table.setRowCount(len(self.prescriptions))
@@ -158,7 +134,6 @@ class VisitDetailWindow(QDialog):
             self.prescriptions_table.setItem(row, 3, QTableWidgetItem(prescription.get('instructions', '')))
         self.prescriptions_table.resizeColumnsToContents()
         self.prescriptions_table.resizeRowsToContents()
-
 
 # --- Testing Block ---
 if __name__ == '__main__':
