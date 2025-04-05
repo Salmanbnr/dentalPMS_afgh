@@ -104,12 +104,12 @@ class VisitDetailWindow(QDialog):
         self.add_service_widget.setVisible(False)  # Hidden until edit mode
         # Services Table
         self.services_table = QTableWidget()
-        self.services_table.setColumnCount(6)
-        self.services_table.setHorizontalHeaderLabels(["ID", "Service", "Tooth #", "Price", "Notes", ""])
-        self.services_table.setColumnHidden(0, True)
-        self.services_table.setColumnHidden(5, True)
-        self.services_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.services_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.services_table.setColumnCount(7)  # Added an extra column for the remove button
+        self.services_table.setHorizontalHeaderLabels(["ID", "Service", "Tooth #", "Price", "Notes", "", "Remove"])
+        self.services_table.setColumnHidden(0, True)  # Hide ID
+        self.services_table.setColumnHidden(5, True)  # Hide type (new/old)
+        self.services_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Service Name
+        self.services_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Notes
         self.services_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.services_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.populate_services_table()
@@ -148,12 +148,12 @@ class VisitDetailWindow(QDialog):
         self.add_prescription_widget.setVisible(False)  # Hidden until edit mode
         # Prescriptions Table
         self.prescriptions_table = QTableWidget()
-        self.prescriptions_table.setColumnCount(6)
-        self.prescriptions_table.setHorizontalHeaderLabels(["ID", "Medication", "Qty", "Price", "Instructions", ""])
-        self.prescriptions_table.setColumnHidden(0, True)
-        self.prescriptions_table.setColumnHidden(5, True)
-        self.prescriptions_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.prescriptions_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.prescriptions_table.setColumnCount(7)  # Added an extra column for the remove button
+        self.prescriptions_table.setHorizontalHeaderLabels(["ID", "Medication", "Qty", "Price", "Instructions", "", "Remove"])
+        self.prescriptions_table.setColumnHidden(0, True)  # Hide ID
+        self.prescriptions_table.setColumnHidden(5, True)  # Hide type (new/old)
+        self.prescriptions_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Med Name
+        self.prescriptions_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Instructions
         self.prescriptions_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.prescriptions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.populate_prescriptions_table()
@@ -211,11 +211,13 @@ class VisitDetailWindow(QDialog):
             self.services_table.setItem(row, 3, QTableWidgetItem(f"{service.get('price_charged', 0.0):.2f}"))
             self.services_table.setItem(row, 4, QTableWidgetItem(service.get('notes', '')))
             self.services_table.setItem(row, 5, QTableWidgetItem('existing'))
-            remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "")
+            remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "Remove")
             remove_button.setToolTip("Remove this service")
             remove_button.setProperty("row", row)
             remove_button.setProperty("is_service", True)
-            remove_button.clicked.connect(self.remove_item)
+            remove_button.clicked.connect(lambda checked, b=remove_button: self.remove_item(b))  # Fixed lambda
+            # Disable remove button when not in edit mode
+            remove_button.setEnabled(self.is_editing)
             self.services_table.setCellWidget(row, 6, remove_button)
         self.services_table.resizeColumnsToContents()
         self.services_table.resizeRowsToContents()
@@ -230,11 +232,13 @@ class VisitDetailWindow(QDialog):
             self.prescriptions_table.setItem(row, 3, QTableWidgetItem(f"{prescription.get('price_charged', 0.0):.2f}"))
             self.prescriptions_table.setItem(row, 4, QTableWidgetItem(prescription.get('instructions', '')))
             self.prescriptions_table.setItem(row, 5, QTableWidgetItem('existing'))
-            remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "")
+            remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "Remove")
             remove_button.setToolTip("Remove this prescription")
             remove_button.setProperty("row", row)
             remove_button.setProperty("is_service", False)
-            remove_button.clicked.connect(self.remove_item)
+            remove_button.clicked.connect(lambda checked, b=remove_button: self.remove_item(b))  # Fixed lambda
+            # Disable remove button when not in edit mode
+            remove_button.setEnabled(self.is_editing)
             self.prescriptions_table.setCellWidget(row, 6, remove_button)
         self.prescriptions_table.resizeColumnsToContents()
         self.prescriptions_table.resizeRowsToContents()
@@ -259,6 +263,16 @@ class VisitDetailWindow(QDialog):
             cancel_button.clicked.connect(self.cancel_edit)
             self.button_box.accepted.disconnect()
             self.button_box.rejected.connect(self.reject)
+
+            # Enable remove buttons
+            for row in range(self.services_table.rowCount()):
+                button = self.services_table.cellWidget(row, 6)
+                if button:
+                    button.setEnabled(True)
+            for row in range(self.prescriptions_table.rowCount()):
+                button = self.prescriptions_table.cellWidget(row, 6)
+                if button:
+                    button.setEnabled(True)
         else:
             # Revert to view mode
             self.visit_date_input.setReadOnly(True)
@@ -277,6 +291,16 @@ class VisitDetailWindow(QDialog):
             self.populate_services_table()
             self.populate_prescriptions_table()
             self.update_financial_summary()
+
+            # Disable remove buttons
+            for row in range(self.services_table.rowCount()):
+                button = self.services_table.cellWidget(row, 6)
+                if button:
+                    button.setEnabled(False)
+            for row in range(self.prescriptions_table.rowCount()):
+                button = self.prescriptions_table.cellWidget(row, 6)
+                if button:
+                    button.setEnabled(False)
 
     def update_service_price(self):
         """Update price input when service selection changes."""
@@ -351,17 +375,23 @@ class VisitDetailWindow(QDialog):
             table.setItem(row_position, 3, QTableWidgetItem(f"{price:.2f}"))
             table.setItem(row_position, 4, QTableWidgetItem(notes))
 
-        remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "")
+        remove_button = QPushButton(qta.icon('fa5s.trash-alt'), "Remove")
         remove_button.setToolTip(f"Remove this {'service' if is_service else 'prescription'}")
         remove_button.setProperty("row", row_position)
         remove_button.setProperty("is_service", is_service)
-        remove_button.clicked.connect(self.remove_item)
+        remove_button.clicked.connect(lambda checked, b=remove_button: self.remove_item(b))  # Fixed lambda
+        # Disable remove button when not in edit mode
+        remove_button.setEnabled(self.is_editing)
         table.setCellWidget(row_position, 6, remove_button)
 
         table.resizeColumnsToContents()
 
     def remove_item(self, button):
         """Removes an item (service or prescription) from the table."""
+        if not isinstance(button, QPushButton):
+            print("Error: Invalid button object passed to remove_item")
+            return
+
         row_to_remove = button.property("row")
         is_service = button.property("is_service")
 
@@ -373,14 +403,16 @@ class VisitDetailWindow(QDialog):
         item_type = table.item(row_to_remove, 5).text()
 
         confirm = QMessageBox.question(self, "Confirm Removal",
-                                      "Are you sure you want to remove this item?",
+                                      f"Are you sure you want to remove this {'service' if is_service else 'prescription'}?",
                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
-            if item_type == 'existing':
+            if item_type == 'existing' and self.is_editing:
+                # Remove from database
                 if is_service:
                     success = remove_service_from_visit(item_id)
                 else:
                     success = remove_prescription_from_visit(item_id)
+
                 if success is not True:
                     QMessageBox.critical(self, "Database Error", "Failed to remove item from database.")
                     return
@@ -394,6 +426,7 @@ class VisitDetailWindow(QDialog):
             button = table.cellWidget(row, 6)
             if button:
                 button.setProperty("row", row)
+                button.setEnabled(self.is_editing)
 
     def update_financial_summary(self):
         """Updates the total and due amount labels based on current table data."""
