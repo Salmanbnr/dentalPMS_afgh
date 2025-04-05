@@ -1,3 +1,4 @@
+# ui/view_edit_patient_window.py
 import sys
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QMessageBox, QFrame)

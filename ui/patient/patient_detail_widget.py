@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                              QMessageBox, QFormLayout, QGroupBox, QScrollArea,
-                             QListWidget, QListWidgetItem, QSizePolicy)
+                             QListWidget, QListWidgetItem, QSizePolicy, QStackedLayout)
 from PyQt6.QtCore import pyqtSignal, Qt, QSize
 import qtawesome as qta
 from pathlib import Path
@@ -30,9 +30,18 @@ class PatientDetailWidget(QWidget):
         self.current_patient_id = None
         self.patient_data = None
         self.visit_list_data = []  # Store basic visit info for the list
+        self.add_visit_widget = None  # Will be created when patient is loaded
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)  # Use spacing from parent layouts
+
+        # Create a stacked layout to switch between patient details and add visit form
+        self.stacked_layout = QStackedLayout()
+        self.main_layout.addLayout(self.stacked_layout)
+
+        # --- First Page: Patient Info and Visits ---
+        self.patient_and_visits_widget = QWidget()
+        self.patient_and_visits_layout = QVBoxLayout(self.patient_and_visits_widget)
 
         # --- Top Section: Patient Info ---
         self.patient_info_group = QGroupBox("Patient Information")
@@ -62,7 +71,7 @@ class PatientDetailWidget(QWidget):
         top_row_layout.addWidget(self.edit_patient_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)  # Button top-right
 
         self.patient_info_layout.addLayout(top_row_layout)
-        self.main_layout.addWidget(self.patient_info_group)
+        self.patient_and_visits_layout.addWidget(self.patient_info_group)
 
         # --- Bottom Section: Visits ---
         self.visits_group = QGroupBox("Patient Visits")
@@ -75,14 +84,16 @@ class PatientDetailWidget(QWidget):
 
         self.add_visit_button = QPushButton(qta.icon('fa5s.plus-circle'), "Add New Visit")
         self.add_visit_button.setToolTip("Add a new visit record for this patient")
-        self.add_visit_button.clicked.connect(self.open_add_visit_window)
+        self.add_visit_button.clicked.connect(self.show_add_visit_form)
         self.add_visit_button.setEnabled(False)  # Disabled until patient loaded
         self.visits_layout.addWidget(self.add_visit_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.main_layout.addWidget(self.visits_group)
-        self.main_layout.addStretch()  # Push content upwards
+        self.patient_and_visits_layout.addWidget(self.visits_group)
+        self.patient_and_visits_layout.addStretch()  # Push content upwards
 
-        # Initially hide or show placeholder
+        # Add the patient and visits widget to the stacked layout initially
+        self.stacked_layout.addWidget(self.patient_and_visits_widget)
+
         self.clear_details()
 
     def load_patient(self, patient_id):
@@ -106,6 +117,13 @@ class PatientDetailWidget(QWidget):
             self.edit_patient_button.setEnabled(True)
             self.add_visit_button.setEnabled(True)
 
+            # Create or update the add visit widget with the current patient_id
+            if self.add_visit_widget is None:
+                self.add_visit_widget = AddEditVisitWindow(patient_id=self.current_patient_id, parent=self)
+                self.add_visit_widget.visit_saved.connect(self.handle_visit_saved)
+                self.add_visit_widget.cancelled.connect(self.hide_add_visit_form)
+                self.stacked_layout.addWidget(self.add_visit_widget)
+
             self.load_visits()  # Load visits after patient details are set
         else:
             self.clear_details()
@@ -128,10 +146,12 @@ class PatientDetailWidget(QWidget):
 
         self.edit_patient_button.setEnabled(False)
         self.add_visit_button.setEnabled(False)
-        # Keep groups visible but maybe disable buttons? Or hide groups?
-        # Hiding might cause layout shifts. Let's keep them visible but buttons disabled.
-        # self.patient_info_group.setVisible(False)
-        # self.visits_group.setVisible(False)
+
+        # Remove add_visit_widget if it exists to free resources
+        if self.add_visit_widget is not None:
+            self.stacked_layout.removeWidget(self.add_visit_widget)
+            self.add_visit_widget.deleteLater()
+            self.add_visit_widget = None
 
     def load_visits(self):
         """Loads the visit list for the current patient."""
@@ -176,24 +196,31 @@ class PatientDetailWidget(QWidget):
             print(f"PatientDetailWidget reloading data for patient ID: {updated_patient_id}")
             self.load_patient(self.current_patient_id)  # Reload displayed data
 
-    def open_add_visit_window(self):
-        """Opens the modal dialog to add a new visit for the current patient."""
+    def show_add_visit_form(self):
+        """Shows the add visit form in the stacked layout."""
         if not self.current_patient_id:
             QMessageBox.warning(self, "No Patient", "Please select a patient first.")
             return
 
-        dialog = AddEditVisitWindow(patient_id=self.current_patient_id, parent=self)
-        dialog.visit_saved.connect(self.handle_visit_saved)
-        dialog.exec()
+        if self.add_visit_widget is None:
+            # This should not happen if load_patient was called, but handle it just in case
+            self.add_visit_widget = AddEditVisitWindow(patient_id=self.current_patient_id, parent=self)
+            self.add_visit_widget.visit_saved.connect(self.handle_visit_saved)
+            self.add_visit_widget.cancelled.connect(self.hide_add_visit_form)
+            self.stacked_layout.addWidget(self.add_visit_widget)
+
+        self.add_visit_widget.clear_form()  # Reset form fields
+        self.stacked_layout.setCurrentIndex(1)  # Switch to add visit form
+
+    def hide_add_visit_form(self):
+        """Hides the add visit form and returns to patient details."""
+        self.stacked_layout.setCurrentIndex(0)  # Switch back to patient details
+        self.load_visits()  # Refresh visits list
 
     def open_visit_detail_window(self, item):
         """Opens the modal dialog to view details of the selected visit."""
         visit_id = item.data(Qt.ItemDataRole.UserRole)
         if visit_id:
-            # Optional: Could open AddEditVisitWindow in edit mode instead?
-            # dialog = AddEditVisitWindow(patient_id=self.current_patient_id, visit_id=visit_id, parent=self)
-            # dialog.visit_saved.connect(self.handle_visit_saved)
-            # For now, just show details:
             dialog = VisitDetailWindow(visit_id=visit_id, parent=self)
             dialog.exec()
         else:
@@ -203,7 +230,7 @@ class PatientDetailWidget(QWidget):
         """Called when AddEditVisitWindow signals success. Reloads visit list."""
         if patient_id_from_signal == self.current_patient_id:
             print(f"PatientDetailWidget reloading visits for patient ID: {patient_id_from_signal}")
-            self.load_visits()
+            self.hide_add_visit_form()  # Return to patient details and refresh
 
 # --- Testing Block ---
 if __name__ == '__main__':

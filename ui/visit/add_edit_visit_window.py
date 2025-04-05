@@ -1,6 +1,6 @@
 import sys
-from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
-                             QPushButton, QMessageBox, QFormLayout, QDialogButtonBox, QGroupBox,
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
+                             QPushButton, QMessageBox, QFormLayout, QGroupBox,
                              QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QSpinBox,
                              QDoubleSpinBox, QDateEdit, QAbstractItemView, QLineEdit)
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
@@ -13,9 +13,10 @@ from database.data_manager import (add_prescription_to_visit, add_service_to_vis
                                   remove_service_from_visit, get_visit_by_id)
 from model.visit_manager import load_initial_data, save_visit_details, add_new_visit
 
-class AddEditVisitWindow(QDialog):
-    """Dialog for adding a new visit or editing an existing one."""
+class AddEditVisitWindow(QWidget):
+    """Widget for adding a new visit or editing an existing one."""
     visit_saved = pyqtSignal(int)  # Emit patient_id when visit is saved/updated
+    cancelled = pyqtSignal()  # New signal for when the user cancels
 
     def __init__(self, patient_id, visit_id=None, parent=None):
         super().__init__(parent)
@@ -31,13 +32,10 @@ class AddEditVisitWindow(QDialog):
         self.setWindowTitle(f"{'Edit' if self.is_editing else 'Add'} Visit for Patient ID: {self.patient_id}")
         self.setMinimumWidth(750)
         self.setMinimumHeight(650)
-        self.setModal(True)
 
         # --- Load initial data ---
         if not self.load_initial_data():
             QMessageBox.critical(self, "Error", "Could not load necessary data (Patient/Services/Medications). Cannot open window.")
-            from PyQt6.QtCore import QTimer
-            QTimer.singleShot(0, self.reject)
             return
 
         # --- Layouts ---
@@ -161,11 +159,16 @@ class AddEditVisitWindow(QDialog):
         self.paid_amount_input.valueChanged.connect(self.update_due_amount_display)
         self.main_layout.addWidget(payment_group)
 
-        # --- Dialog Buttons ---
-        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        self.button_box.accepted.connect(self.accept)
-        self.button_box.rejected.connect(self.reject)
-        self.main_layout.addWidget(self.button_box)
+        # --- Action Buttons ---
+        action_layout = QHBoxLayout()
+        self.save_button = QPushButton(qta.icon('fa5s.save'), "Save Visit")
+        self.save_button.clicked.connect(self.save_visit)
+        self.cancel_button = QPushButton(qta.icon('fa5s.times'), "Cancel")
+        self.cancel_button.clicked.connect(self.cancel)
+        action_layout.addStretch()
+        action_layout.addWidget(self.save_button)
+        action_layout.addWidget(self.cancel_button)
+        self.main_layout.addLayout(action_layout)
 
         # --- Populate fields if editing ---
         if self.is_editing:
@@ -411,7 +414,7 @@ class AddEditVisitWindow(QDialog):
         due = max(0.0, total - paid)
         self.due_amount_label.setText(f"{due:.2f}")
 
-    def accept(self):
+    def save_visit(self):
         """Save the visit details and items."""
         visit_date = self.visit_date_input.date().toString("yyyy-MM-dd")
         notes = self.visit_notes_input.toPlainText().strip()
@@ -423,7 +426,7 @@ class AddEditVisitWindow(QDialog):
             if success:
                 QMessageBox.information(self, "Success", f"Visit ID {self.visit_id} updated successfully.")
                 self.visit_saved.emit(self.patient_id)
-                super().accept()
+                self.clear_form()  # Reset form for potential new entries
             else:
                 QMessageBox.critical(self, "Error", "Failed to update visit details.")
         else:  # Adding a new visit
@@ -432,9 +435,26 @@ class AddEditVisitWindow(QDialog):
             if new_visit_id:
                 QMessageBox.information(self, "Success", f"New visit added successfully.")
                 self.visit_saved.emit(self.patient_id)
-                super().accept()
+                self.clear_form()  # Reset form for potential new entries
             else:
                 QMessageBox.warning(self, "Partial Success", f"New visit created, but some items may have failed to save.")
+
+    def cancel(self):
+        """Handle cancellation by emitting the cancelled signal."""
+        self.cancelled.emit()
+
+    def clear_form(self):
+        """Clear all form fields and tables for a new entry or after saving."""
+        self.visit_date_input.setDate(QDate.currentDate())
+        self.visit_notes_input.clear()
+        self.lab_results_input.clear()
+        self.paid_amount_input.setValue(0.0)
+        self.service_tooth_input.clear()
+        self.service_notes_input.clear()
+        self.med_instr_input.clear()
+        self.services_table.setRowCount(0)
+        self.prescriptions_table.setRowCount(0)
+        self.update_financial_summary()
 
 # --- Testing Block ---
 if __name__ == '__main__':
@@ -468,11 +488,12 @@ if __name__ == '__main__':
     def on_visit_saved_test(p_id):
         print(f"Test: visit_saved signal received for Patient ID: {p_id}!")
 
+    def on_cancelled_test():
+        print("Test: cancelled signal received!")
+
     window.visit_saved.connect(on_visit_saved_test)
+    window.cancelled.connect(on_cancelled_test)
 
-    result = window.exec()
+    window.show()
 
-    if result == QDialog.DialogCode.Accepted:
-        print("Add/Edit Visit window accepted (Save successful).")
-    else:
-        print("Add/Edit Visit window rejected (Cancel pressed or error).")
+    sys.exit(app.exec())

@@ -2,10 +2,9 @@ import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QAbstractItemView,
-    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy, QMainWindow, QStackedWidget
+    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy, QMainWindow
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QIcon, QColor, QPalette
+from PyQt6.QtCore import Qt, QSize
 import qtawesome as qta
 from pathlib import Path
 
