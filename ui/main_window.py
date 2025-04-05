@@ -1,121 +1,262 @@
 # dental_clinic/ui/main_window.py
 import sys
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                             QPushButton, QTableWidget, QTableWidgetItem, QAbstractItemView,
-                             QLineEdit, QMessageBox, QApplication, QStackedLayout) # Keep QStackedLayout for now if used elsewhere
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    # Remove QMainWindow, QStackedLayout (if not needed internally)
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QPushButton, QTableWidget, QTableWidgetItem, QAbstractItemView,
+    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy,QMainWindow
+)
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QIcon, QColor, QPalette # Keep QPixmap if used for something else later
 import qtawesome as qta
 from pathlib import Path
 
-# Adjust import path
+# --- Determine Project Root (assuming main_window.py is in dental_clinic/ui/) ---
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# --- Adjust import paths relative to PROJECT_ROOT ---
+# This allows imports like 'database.data_manager'
+sys.path.insert(0, str(PROJECT_ROOT))
 try:
     from database.data_manager import get_all_patients, delete_patient
+    # Use relative imports for sibling modules within 'ui'
     from .add_patient_dialog import AddPatientDialog
-    # *** CHANGE THIS IMPORT ***
-    from .view_edit_patient_window import PatientViewEditWindow # Import the new class name
+    from .view_edit_patient_window import PatientViewEditWindow
+    from database.schema import initialize_database # Keep for testing block if needed
 except ImportError as e:
-     print(f"Error importing UI/DB modules in main_window.py: {e}")
-     print("Ensure you are running from the project root directory (dental_clinic).")
-     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-     try:
-         from database.data_manager import get_all_patients, delete_patient
-         from ui.add_patient_dialog import AddPatientDialog
-         # *** CHANGE THIS IMPORT ***
-         from ui.view_edit_patient_window import PatientViewEditWindow # Import the new class name
-     except ImportError:
-         print("Failed to import necessary modules even after path adjustment.")
-         sys.exit(1)
+    print(f"Error importing UI/DB modules in main_window.py: {e}")
+    print("Ensure the script is run where PROJECT_ROOT is correctly determined,")
+    print("or that the necessary modules are importable.")
+    # Attempt different relative import as fallback
+    try:
+        from ..database.data_manager import get_all_patients, delete_patient
+        from .add_patient_dialog import AddPatientDialog
+        from .view_edit_patient_window import PatientViewEditWindow
+        from ..database.schema import initialize_database
+    except ImportError:
+        print("Failed to import necessary modules using relative paths.")
+        sys.exit(1)
 
-class MainWindow(QMainWindow):
-    """Main application window."""
+
+# --- Styling specific to the Patient List Page ---
+# (Adapted from the previous dashboard stylesheet, focusing on elements within this widget)
+COLOR_PRIMARY = "#2c3e50"
+COLOR_SECONDARY = "#ecf0f1"
+COLOR_ACCENT = "#3498db"
+COLOR_TEXT_LIGHT = "#ffffff"
+COLOR_TEXT_DARK = "#34495e"
+COLOR_BORDER = "#bdc3c7"
+COLOR_HOVER = "#4a6fa5"
+
+PATIENT_PAGE_STYLESHEET = f"""
+    /* Style the PatientListPage widget itself */
+    #PatientListPage {{
+        background-color: {COLOR_SECONDARY};
+        /* Add padding if needed around the content, or let the dashboard handle it */
+        /* padding: 15px; */
+    }}
+
+    /* Search bar and buttons within this page */
+     #PatientListPage #HeaderFrame {{
+        /* Add styling to the header frame if desired, e.g., background or border */
+        /* border-bottom: 1px solid {COLOR_BORDER}; */
+        /* padding-bottom: 10px; */
+     }}
+
+    #PatientListPage QLineEdit {{
+        padding: 8px;
+        border: 1px solid {COLOR_BORDER};
+        border-radius: 4px;
+        font-size: 10pt;
+        background-color: white;
+    }}
+     #PatientListPage QPushButton {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        font-size: 10pt;
+        min-width: 120px;
+     }}
+    #PatientListPage QPushButton:hover {{
+        background-color: {COLOR_HOVER};
+    }}
+     #PatientListPage QPushButton:disabled {{
+        background-color: #95a5a6;
+        color: #ecf0f1;
+     }}
+
+    /* Table Styling */
+    #PatientListPage QTableWidget {{
+        border: 1px solid {COLOR_BORDER};
+        gridline-color: {COLOR_BORDER};
+        font-size: 10pt;
+        background-color: white;
+    }}
+    #PatientListPage QHeaderView::section {{
+        background-color: {COLOR_PRIMARY};
+        color: {COLOR_TEXT_LIGHT};
+        padding: 6px;
+        border: none;
+        border-right: 1px solid {COLOR_BORDER};
+        font-weight: bold;
+    }}
+    #PatientListPage QHeaderView::section:last {{
+        border-right: none;
+    }}
+    #PatientListPage QTableWidget::item {{
+        padding: 5px;
+        color: {COLOR_TEXT_DARK};
+    }}
+    #PatientListPage QTableWidget::item:selected {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+    }}
+     #PatientListPage QTableWidget::item:focus {{
+        outline: none;
+    }}
+     #PatientListPage QScrollBar:vertical {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        width: 10px;
+        margin: 0px 0px 0px 0px;
+    }}
+    #PatientListPage QScrollBar::handle:vertical {{
+        background: {COLOR_BORDER};
+        min-height: 20px;
+        border-radius: 5px;
+    }}
+    #PatientListPage QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0px;
+        background: none;
+    }}
+     #PatientListPage QScrollBar:horizontal {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        height: 10px;
+        margin: 0px 0px 0px 0px;
+    }}
+    #PatientListPage QScrollBar::handle:horizontal {{
+        background: {COLOR_BORDER};
+        min-width: 20px;
+        border-radius: 5px;
+    }}
+    #PatientListPage QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+        width: 0px;
+        background: none;
+    }}
+"""
+
+# *** RENAME class and change inheritance ***
+class PatientListPage(QWidget):
+    """Widget managing the patient list display and operations."""
+    # Signal emitted when the view/edit window needs closing (e.g., before deletion)
+    # request_close_child_window = pyqtSignal(int) # Removed, direct call is simpler
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Dental Clinic Management - Patient List") # Adjusted title
-        self.setGeometry(100, 100, 850, 600) # Slightly wider default
+        self.setObjectName("PatientListPage") # For QSS styling
+        self.setStyleSheet(PATIENT_PAGE_STYLESHEET) # Apply styles to this widget
 
         # --- Keep track of the opened view/edit window ---
         self.view_edit_win_instance = None
 
-        # --- Central Widget and Layout ---
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        # Keep stacked layout if needed for other potential views, otherwise use QVBoxLayout
-        self.main_layout_container = QStackedLayout(central_widget)
-
-        # --- Main Patient List Widget ---
-        main_list_widget = QWidget()
-        main_layout = QVBoxLayout(main_list_widget)
+        # --- Main Layout for this widget ---
+        # No QMainWindow central widget or stacked layout needed here
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15) # Add padding within the page
+        main_layout.setSpacing(15)
 
         # --- Toolbar / Header Area ---
-        header_layout = QHBoxLayout()
-        header_layout.addWidget(QLabel("Search Patient (Name/Phone):"))
+        header_frame = QFrame()  # Use a frame for better structure/styling if needed
+        header_frame.setObjectName("HeaderFrame")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(0, 0, 0, 0)  # No internal margins for layout
+        header_layout.setSpacing(10)
+
+        search_icon = qta.icon('fa5s.search', color=COLOR_TEXT_DARK)
+        search_label = QLabel()
+        search_label.setPixmap(search_icon.pixmap(QSize(16, 16)))
+
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Enter name or phone...")
+        self.search_input.setPlaceholderText("Search Patient (Name/Phone)...")
         self.search_input.textChanged.connect(self.filter_patients)
-        header_layout.addWidget(self.search_input)
+
+        # Enlarge the search bar horizontally
+        self.search_input.setSizePolicy(
+            QSizePolicy.Policy.Expanding,  # Horizontal policy: Expanding
+            QSizePolicy.Policy.Fixed       # Vertical policy: Fixed
+        )
+        self.search_input.setMinimumWidth(300)  # Optional: Set a minimum width
+
+        # Add widgets to the header layout
+        header_layout.addWidget(search_label)
+        header_layout.addWidget(self.search_input, 1)  # Add stretch factor to expand the search bar
+        header_layout.addStretch(1)  # Push buttons to the right
 
         # Add Patient Button
-        self.add_button = QPushButton(qta.icon('fa5s.user-plus'), " Add Patient")
+        self.add_button = QPushButton(qta.icon('fa5s.user-plus', color=COLOR_TEXT_LIGHT), " Add Patient")
         self.add_button.clicked.connect(self.open_add_patient_dialog)
         header_layout.addWidget(self.add_button)
 
         # View/Edit Patient Button
-        self.view_edit_button = QPushButton(qta.icon('fa5s.user-edit'), " View/Edit Patient")
-        self.view_edit_button.clicked.connect(self.open_view_edit_patient_window) # Connects to the modified method
-        self.view_edit_button.setEnabled(False) # Disabled until a patient is selected
+        self.view_edit_button = QPushButton(qta.icon('fa5s.user-edit', color=COLOR_TEXT_LIGHT), " View/Edit")
+        self.view_edit_button.clicked.connect(self.open_view_edit_patient_window)
+        self.view_edit_button.setEnabled(False)
         header_layout.addWidget(self.view_edit_button)
 
         # Delete Patient Button
-        self.delete_button = QPushButton(qta.icon('fa5s.user-minus'), " Delete Patient")
+        self.delete_button = QPushButton(qta.icon('fa5s.user-minus', color=COLOR_TEXT_LIGHT), " Delete")
         self.delete_button.clicked.connect(self.delete_selected_patient)
-        self.delete_button.setEnabled(False) # Disabled until a patient is selected
+        self.delete_button.setEnabled(False)
         header_layout.addWidget(self.delete_button)
 
-        main_layout.addLayout(header_layout)
+        main_layout.addWidget(header_frame)  # Add the frame containing the header controls
 
+        
         # --- Patient Table ---
         self.patient_table = QTableWidget()
-        self.patient_table.setColumnCount(5) # ID, Name, Father's Name, Phone, Address
+        # self.patient_table.setObjectName("PatientTable") # Not needed if styling via #PatientListPage QTableWidget
+        self.patient_table.setColumnCount(5)
         self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "Father's Name", "Phone Number", "Address"])
-        self.patient_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers) # Read-only table
-        self.patient_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows) # Select whole row
-        self.patient_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection) # Only one selection
-        self.patient_table.verticalHeader().setVisible(False) # Hide row numbers
-        self.patient_table.horizontalHeader().setStretchLastSection(True) # Make last column stretch
-        # Adjust column widths (example)
-        self.patient_table.setColumnWidth(0, 50)  # ID
-        self.patient_table.setColumnWidth(1, 150) # Name
-        self.patient_table.setColumnWidth(2, 150) # Father's Name
-        self.patient_table.setColumnWidth(3, 120) # Phone
-        # Address will stretch
+        self.patient_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.patient_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.patient_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.patient_table.verticalHeader().setVisible(False)
+        self.patient_table.horizontalHeader().setStretchLastSection(True)
+        self.patient_table.setShowGrid(True)
+
+        self.patient_table.setColumnWidth(0, 60)
+        self.patient_table.setColumnWidth(1, 180)
+        self.patient_table.setColumnWidth(2, 180)
+        self.patient_table.setColumnWidth(3, 130)
 
         self.patient_table.itemSelectionChanged.connect(self.update_button_states)
-        self.patient_table.itemDoubleClicked.connect(self.handle_double_click) # Added double-click handler
+        self.patient_table.itemDoubleClicked.connect(self.handle_double_click)
 
         main_layout.addWidget(self.patient_table)
-
-        # Add main list widget to stacked layout
-        self.main_layout_container.addWidget(main_list_widget)
-        self.main_layout_container.setCurrentWidget(main_list_widget) # Start on list view
 
         # --- Load Initial Data ---
         self.load_patients()
 
+    # --- Methods (largely unchanged, but adjust message box parents) ---
+
     def handle_double_click(self, item):
-        """Handles double-clicking a row in the table."""
-        # Ensure a valid item in the ID column was clicked implicitly by selecting the row
         if self.get_selected_patient_id() is not None:
-             self.open_view_edit_patient_window()
+            self.open_view_edit_patient_window()
 
     def load_patients(self, search_term=""):
-        """Load patients from DB and populate the table."""
-        current_selection_id = self.get_selected_patient_id() # Preserve selection if possible
-
-        self.patient_table.setRowCount(0) # Clear table
-        patients = get_all_patients(search_term)
+        current_selection_id = self.get_selected_patient_id()
+        self.patient_table.setRowCount(0)
+        try:
+            patients = get_all_patients(search_term)
+        except Exception as e:
+            # Use self.window() to get the parent QMainWindow for message boxes
+            QMessageBox.critical(self.window(), "Database Error", f"Could not retrieve patient list.\nError: {e}")
+            patients = None
 
         if patients is None:
-            QMessageBox.critical(self, "Database Error", "Could not retrieve patient list.")
             return
 
         new_selection_row = -1
@@ -127,9 +268,9 @@ class MainWindow(QMainWindow):
             phone = patient.get('phone_number', '')
             address = patient.get('address', '')
 
-            # Store patient_id in the first column's item data
             id_item = QTableWidgetItem(str(patient_id))
-            id_item.setData(Qt.ItemDataRole.UserRole, patient_id) # Store ID for later retrieval
+            id_item.setData(Qt.ItemDataRole.UserRole, patient_id)
+            id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
             self.patient_table.setItem(row, 0, id_item)
             self.patient_table.setItem(row, 1, QTableWidgetItem(name))
@@ -140,93 +281,88 @@ class MainWindow(QMainWindow):
             if patient_id == current_selection_id:
                 new_selection_row = row
 
-        self.update_button_states() # Update buttons after loading
+        self.update_button_states()
 
-        # Restore selection
         if new_selection_row != -1:
-             self.patient_table.selectRow(new_selection_row)
+            self.patient_table.selectRow(new_selection_row)
 
     def filter_patients(self):
-        """Filter patient list based on search input."""
         search_term = self.search_input.text().strip()
         self.load_patients(search_term)
 
     def update_button_states(self):
-        """Enable/disable buttons based on table selection."""
-        selected_items = self.patient_table.selectedItems()
-        is_patient_selected = bool(selected_items)
+        is_patient_selected = bool(self.patient_table.selectionModel().hasSelection())
         self.view_edit_button.setEnabled(is_patient_selected)
         self.delete_button.setEnabled(is_patient_selected)
 
     def get_selected_patient_id(self):
-        """Helper to get the ID of the currently selected patient."""
         selected_rows = self.patient_table.selectionModel().selectedRows()
         if selected_rows:
             selected_row = selected_rows[0].row()
-            id_item = self.patient_table.item(selected_row, 0) # ID is in column 0
+            id_item = self.patient_table.item(selected_row, 0)
             if id_item:
-                return id_item.data(Qt.ItemDataRole.UserRole) # Retrieve stored ID
+                return id_item.data(Qt.ItemDataRole.UserRole)
         return None
 
     def open_add_patient_dialog(self):
-        """Open the dialog to add a new patient."""
-        dialog = AddPatientDialog(self)
-        # Connect signal to reload AND potentially select the new patient
+        # Parent the dialog to the top-level window (the Dashboard)
+        dialog = AddPatientDialog(parent=self.window())
         dialog.patient_added.connect(lambda: self.load_patients(self.search_input.text().strip()))
-        dialog.exec() # Show modally
+        dialog.exec()
 
     def open_view_edit_patient_window(self):
-        """Open the NEW window to view/edit the selected patient."""
         patient_id = self.get_selected_patient_id()
         if patient_id is None:
-            QMessageBox.warning(self, "Selection Error", "Please select a patient from the table.")
+            QMessageBox.warning(self.window(), "Selection Error", "Please select a patient from the table.")
             return
 
-        # Check if a window for this patient is already open (optional, prevents multiple windows for same patient)
-        if self.view_edit_win_instance and self.view_edit_win_instance.isVisible() and self.view_edit_win_instance.current_patient_id_to_load == patient_id:
-             self.view_edit_win_instance.activateWindow() # Bring existing window to front
-             self.view_edit_win_instance.raise_()
-             return
+        # Window management logic (same as before, just within this widget)
+        if self.view_edit_win_instance and self.view_edit_win_instance.isVisible():
+             try:
+                 if self.view_edit_win_instance.current_patient_id == patient_id:
+                     self.view_edit_win_instance.activateWindow()
+                     self.view_edit_win_instance.raise_()
+                     return
+                 else:
+                     self.view_edit_win_instance.close()
+             except (AttributeError, RuntimeError):
+                 self.view_edit_win_instance = None
 
-        # Close any previous instance before opening a new one (alternative behavior)
-        # if self.view_edit_win_instance:
-        #     self.view_edit_win_instance.close()
+        print(f"Opening View/Edit window for patient {patient_id}.")
+        # Create as standalone window (parent=None)
+        self.view_edit_win_instance = PatientViewEditWindow(patient_id=patient_id, parent=None)
+        self.view_edit_win_instance.destroyed.connect(self.on_view_edit_destroyed)
 
-        # --- MODIFIED PART ---
-        # Create the new window instance (PatientViewEditWindow)
-        # Pass self as parent if you want it potentially centered over main window
-        self.view_edit_win_instance = PatientViewEditWindow(patient_id=patient_id, parent=None) # Or parent=self
+        if hasattr(self.view_edit_win_instance, 'data_changed'):
+             self.view_edit_win_instance.data_changed.connect(self.handle_data_changed)
 
-        # Connect the destroyed signal to clear the reference when window is closed
-        # self.view_edit_win_instance.destroyed.connect(self.on_view_edit_destroyed)
-
-        # Show the new window (non-modal)
         self.view_edit_win_instance.show()
-        # --- END MODIFIED PART ---
+
 
     def on_view_edit_destroyed(self):
-        """Clear the reference when the view/edit window is destroyed."""
-        print("View/Edit window destroyed, clearing reference.")
-        self.view_edit_win_instance = None
-        # Optionally reload patients in case changes were made indirectly
+        print("PatientListPage: View/Edit window destroyed signal received.")
+        if self.sender() == self.view_edit_win_instance:
+             self.view_edit_win_instance = None
+        else:
+             print("PatientListPage: Destroyed signal received from unexpected sender.")
+
+
+    def handle_data_changed(self, patient_id):
+        print(f"PatientListPage: Data changed signal received for patient {patient_id}. Reloading list.")
         self.load_patients(self.search_input.text().strip())
 
 
-    # Remove the old on_view_edit_closed method as it's no longer needed for QStackedLayout switching
-
     def delete_selected_patient(self):
-        """Delete the patient selected in the table."""
         patient_id = self.get_selected_patient_id()
         if patient_id is None:
-            QMessageBox.warning(self, "Selection Error", "Please select a patient to delete.")
+            QMessageBox.warning(self.window(), "Selection Error", "Please select a patient to delete.")
             return
 
-        # Get patient name for confirmation message
         selected_row = self.patient_table.selectionModel().selectedRows()[0].row()
         name_item = self.patient_table.item(selected_row, 1)
         patient_name = name_item.text() if name_item else f"ID: {patient_id}"
 
-        reply = QMessageBox.question(self, "Confirm Delete",
+        reply = QMessageBox.question(self.window(), "Confirm Delete",
                                      f"Are you sure you want to delete patient '{patient_name}'?\n"
                                      "This will also delete all associated visits.",
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -234,45 +370,73 @@ class MainWindow(QMainWindow):
 
         if reply == QMessageBox.StandardButton.Yes:
             # Close the detail window if it's open for the patient being deleted
-            if self.view_edit_win_instance and self.view_edit_win_instance.current_patient_id_to_load == patient_id:
-                 print(f"Closing detail window for patient {patient_id} before deletion.")
-                 self.view_edit_win_instance.close()
-                 self.view_edit_win_instance = None # Clear reference immediately
+            self.close_active_child_window(patient_id_to_match=patient_id) # Pass ID to ensure correct window is closed
 
-            success = delete_patient(patient_id)
-            if success is True:
-                QMessageBox.information(self, "Success", f"Patient '{patient_name}' deleted successfully.")
-                self.load_patients(self.search_input.text().strip()) # Refresh table
-            elif success is False: # Integrity error or other known failure
-                 QMessageBox.critical(self, "Deletion Failed", f"Could not delete patient '{patient_name}'. There might be related records preventing deletion.")
-            else: # None - general error
-                QMessageBox.critical(self, "Database Error", f"An error occurred while deleting patient '{patient_name}'.")
+            try:
+                success = delete_patient(patient_id)
+                if success is True:
+                    QMessageBox.information(self.window(), "Success", f"Patient '{patient_name}' deleted successfully.")
+                    self.load_patients(self.search_input.text().strip())
+                elif success is False:
+                    QMessageBox.critical(self.window(), "Deletion Failed", f"Could not delete patient '{patient_name}'. Related records might exist.")
+                else:
+                    QMessageBox.critical(self.window(), "Database Error", f"An error occurred while deleting patient '{patient_name}'.")
+            except Exception as e:
+                 QMessageBox.critical(self.window(), "Deletion Error", f"An unexpected error occurred: {e}")
 
-    def closeEvent(self, event):
-        """Ensure child window is closed when main window closes."""
-        if self.view_edit_win_instance:
-            print("Closing child view/edit window instance.")
-            self.view_edit_win_instance.close()
-        super().closeEvent(event)
+    def close_active_child_window(self, patient_id_to_match=None):
+        """
+        Closes the view/edit window if it's open.
+        If patient_id_to_match is provided, only closes if the window's ID matches.
+        """
+        if self.view_edit_win_instance and self.view_edit_win_instance.isVisible():
+            close_it = True
+            if patient_id_to_match is not None:
+                try:
+                    # Check if the window instance has the expected ID
+                    if (not hasattr(self.view_edit_win_instance, 'current_patient_id') or
+                        self.view_edit_win_instance.current_patient_id != patient_id_to_match):
+                        close_it = False # Don't close if ID doesn't match
+                except (AttributeError, RuntimeError):
+                    # If attribute missing or window deleted, proceed as if it doesn't match
+                    close_it = False
+                    self.view_edit_win_instance = None # Clear potentially dead reference
+
+            if close_it:
+                print(f"PatientListPage: Closing active child view/edit window (Matching ID: {patient_id_to_match is not None}).")
+                try:
+                    self.view_edit_win_instance.close() # Should trigger destroyed signal
+                    # Explicitly setting to None here might be redundant if destroyed signal works reliably
+                    # self.view_edit_win_instance = None
+                except RuntimeError: # Catch if window was already deleted
+                     print("PatientListPage: Child window already deleted.")
+                     self.view_edit_win_instance = None
+            # else: # Optional: print if not closing due to ID mismatch
+            #      print(f"PatientListPage: Child window open, but not closing (ID mismatch or check failed).")
 
 
-# --- Testing Block ---
+    # Remove closeEvent as this is now a QWidget, not a QMainWindow
+
+
+# --- Testing Block (Optional: for testing PatientListPage in isolation) ---
 if __name__ == '__main__':
-    print("Attempting to initialize database for MainWindow test...")
-    try:
-        # Need schema to initialize db if it doesn't exist
-        from database.schema import initialize_database
-        if not initialize_database():
-             print("Database initialization failed. Main window test may not function correctly.")
-        else:
-            print("Database initialized/verified successfully.")
-    except ImportError as e:
-        print(f"Could not import initialize_database: {e}")
-        # Decide whether to proceed or exit
+    print("Attempting to initialize database for PatientListPage test...")
+    if not initialize_database():
+        print("Database initialization failed. Test may not function correctly.")
+    else:
+        print("Database initialized/verified successfully.")
 
     app = QApplication(sys.argv)
-    # Set fusion style for a modern look (optional)
-    # app.setStyle("Fusion")
-    mainWin = MainWindow()
-    mainWin.show()
+    # app.setStyle("Fusion") # Apply style if needed for testing
+
+    test_widget = PatientListPage()
+    # Since it's a QWidget, show it directly or embed in a basic QMainWindow for testing
+    # test_widget.show()
+    # OR more realistically:
+    test_win = QMainWindow()
+    test_win.setCentralWidget(test_widget)
+    test_win.setWindowTitle("Patient List Page Test")
+    test_win.setGeometry(100, 100, 900, 650)
+    test_win.show()
+
     sys.exit(app.exec())
