@@ -28,6 +28,7 @@ class PatientDetailWidget(QWidget):
         self.patient_data = None
         self.visit_list_data = []
         self.add_visit_widget = None
+        self.visit_detail_widget = None  # Added for VisitDetailWindow
 
         self.setStyleSheet("""
             QWidget {
@@ -192,6 +193,11 @@ class PatientDetailWidget(QWidget):
             self.add_visit_widget.deleteLater()
             self.add_visit_widget = None
 
+        if self.visit_detail_widget is not None:
+            self.stacked_layout.removeWidget(self.visit_detail_widget)
+            self.visit_detail_widget.deleteLater()
+            self.visit_detail_widget = None
+
     def load_visits(self):
         self.visits_list_widget.clear()
         if not self.current_patient_id:
@@ -249,16 +255,36 @@ class PatientDetailWidget(QWidget):
         self.load_visits()
 
     def open_visit_detail_window(self, item):
+        """Shows the visit detail view in the stacked layout."""
         visit_id = item.data(Qt.ItemDataRole.UserRole)
         if visit_id:
-            dialog = VisitDetailWindow(visit_id=visit_id, parent=self)
-            dialog.exec()
+            # Check if visit_detail_widget exists and has a different visit_id
+            if self.visit_detail_widget is None or self.visit_detail_widget.visit_id != visit_id:
+                if self.visit_detail_widget is not None:  # Clean up existing widget if it exists
+                    self.stacked_layout.removeWidget(self.visit_detail_widget)
+                    self.visit_detail_widget.deleteLater()
+                self.visit_detail_widget = VisitDetailWindow(visit_id=visit_id, patient_id=self.current_patient_id, parent=self)
+                self.visit_detail_widget.visit_updated.connect(self.handle_visit_updated)
+                self.visit_detail_widget.closed.connect(self.hide_visit_detail)
+                self.stacked_layout.addWidget(self.visit_detail_widget)
+            self.stacked_layout.setCurrentWidget(self.visit_detail_widget)
         else:
             print("Error: Could not get visit ID from list item.")
 
-    def handle_visit_saved(self, patient_id_from_signal):
-        if patient_id_from_signal == self.current_patient_id:
+    def handle_visit_saved(self, patient_id):
+        """Called when AddEditVisitWindow signals a new visit is saved."""
+        if patient_id == self.current_patient_id:
             self.hide_add_visit_form()
+
+    def handle_visit_updated(self, patient_id):
+        """Called when VisitDetailWindow signals an update."""
+        if patient_id == self.current_patient_id:
+            self.load_visits()
+
+    def hide_visit_detail(self):
+        """Return to patient details view."""
+        self.stacked_layout.setCurrentIndex(0)
+        self.load_visits()
 
 if __name__ == '__main__':
     from PyQt6.QtWidgets import QApplication, QMainWindow
@@ -273,16 +299,12 @@ if __name__ == '__main__':
         sys.exit(1)
 
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')  # Modern look
+    app.setStyle('Fusion')
 
     main_win = QMainWindow()
     main_win.setWindowTitle("Patient Detail Widget Test")
     main_win.setGeometry(100, 100, 800, 600)
-    main_win.setStyleSheet("""
-        QMainWindow {
-            background-color: #f5f6fa;
-        }
-    """)
+    main_win.setStyleSheet("QMainWindow { background-color: #f5f6fa; }")
 
     detail_widget = PatientDetailWidget()
 
