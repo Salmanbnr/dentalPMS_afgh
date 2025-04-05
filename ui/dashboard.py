@@ -1,4 +1,3 @@
-# dental_clinic/ui/dashboard/dashboard_window.py
 import sys
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -15,21 +14,18 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # --- Adjust import paths relative to PROJECT_ROOT ---
 sys.path.insert(0, str(PROJECT_ROOT))
 try:
-    # *** Import the modified PatientListPage from main_window ***
     from ui.main_window import PatientListPage
-    from database.schema import initialize_database # For testing block
+    from database.schema import initialize_database  # For testing block
 except ImportError as e:
     print(f"Error importing UI/DB modules in dashboard_window.py: {e}")
     print("Ensure the script is run where PROJECT_ROOT is correctly determined.")
     # Attempt relative import as fallback
     try:
-        # *** Use relative import to get PatientListPage from parent 'ui' directory ***
         from main_window import PatientListPage
-        from database.schema import initialize_database # For testing block
+        from database.schema import initialize_database  # For testing block
     except ImportError:
         print("Failed to import necessary modules using relative paths.")
         sys.exit(1)
-
 
 # --- Constants ---
 CLINIC_NAME = "Salman Dental Clinic"
@@ -39,10 +35,10 @@ LOGO_PATH = LOGO_FILENAME
 # --- Styling for the Dashboard Frame ---
 COLOR_PRIMARY = "#2c3e50"  # Dark Blue/Gray (Sidebar)
 COLOR_SECONDARY = "#ecf0f1" # Light Gray (Content Background)
-COLOR_ACCENT = "#3498db"   # Bright Blue (Highlights, Buttons)
+COLOR_ACCENT = "#3498db"    # Bright Blue (Highlights, Buttons)
 COLOR_TEXT_LIGHT = "#ffffff" # White (On Dark Background)
-COLOR_BORDER = "#bdc3c7"   # Gray (Borders)
-COLOR_HOVER = "#4a6fa5"    # Darker blue for hover
+COLOR_BORDER = "#bdc3c7"    # Gray (Borders)
+COLOR_HOVER = "#4a6fa5"     # Darker blue for hover
 
 DASHBOARD_STYLESHEET = f"""
     QMainWindow {{
@@ -93,7 +89,7 @@ class DashboardWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle(f"{CLINIC_NAME} - Dashboard")
         self.setGeometry(50, 50, 1200, 700)
-        self.setStyleSheet(DASHBOARD_STYLESHEET) # Apply dashboard frame styles
+        self.setStyleSheet(DASHBOARD_STYLESHEET)  # Apply dashboard frame styles
 
         # --- Main Widget and Layout ---
         main_widget = QWidget()
@@ -152,29 +148,28 @@ class DashboardWindow(QMainWindow):
         # --- Content Area ---
         # Use QStackedWidget to hold the different pages
         self.content_stack = QStackedWidget()
-        self.content_stack.setObjectName("ContentStackWidget") # Assign object name for potential styling
+        self.content_stack.setObjectName("ContentStackWidget")  # Assign object name for potential styling
 
         # *** Instantiate PatientListPage from main_window.py ***
-        # Pass self (DashboardWindow) as parent if needed, or None
         self.home_page = PatientListPage(self)
-        self.content_stack.addWidget(self.home_page) # Add it to the stack (index 0)
+        self.content_stack.addWidget(self.home_page)  # Add it to the stack (index 0)
 
         # Add placeholder widgets for other potential pages
         # Make sure the index matches the button index
         # placeholder_appointments = QLabel("Appointments Page Placeholder")
         # placeholder_appointments.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # self.content_stack.addWidget(placeholder_appointments) # index 1
+        # self.content_stack.addWidget(placeholder_appointments)  # index 1
 
         # placeholder_settings = QLabel("Settings Page Placeholder")
         # placeholder_settings.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # self.content_stack.addWidget(placeholder_settings) # index 2
+        # self.content_stack.addWidget(placeholder_settings)  # index 2
 
         main_layout.addWidget(self.content_stack)
 
         # --- Initialize ---
-        self.home_button.setChecked(True) # Start with Home selected
+        self.home_button.setChecked(True)  # Start with Home selected
         self.current_button = self.home_button
-        self.content_stack.setCurrentIndex(0) # Ensure Home page is shown first
+        self.content_stack.setCurrentIndex(0)  # Ensure Home page is shown first
 
     def add_nav_button(self, layout, text, icon_name, index):
         button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
@@ -191,20 +186,26 @@ class DashboardWindow(QMainWindow):
 
             # Check if the index is valid for the stack
             if index < self.content_stack.count():
-                 self.content_stack.setCurrentIndex(index)
-                 self.current_button = button
+                self.content_stack.setCurrentIndex(index)
+                self.current_button = button
             else:
-                 print(f"Error: No content widget found for index {index}")
-                 # Optional: uncheck the clicked button or show an error
-                 button.setChecked(False)
-                 # Ensure the previous button remains checked
-                 if self.current_button:
+                print(f"Error: No content widget found for index {index}")
+                # Optional: uncheck the clicked button or show an error
+                button.setChecked(False)
+                # Ensure the previous button remains checked
+                if self.current_button:
                     self.current_button.setChecked(True)
 
         else:
-             # Prevent unchecking the active button by re-clicking it
-             if self.current_button == button:
-                 button.setChecked(True)
+            # Prevent unchecking the active button by re-clicking it
+            if self.current_button == button:
+                button.setChecked(True)
+
+    def show_home_page(self):
+        """Switch back to the home page (PatientListPage)."""
+        self.content_stack.setCurrentIndex(0)
+        self.home_button.setChecked(True)
+        self.current_button = self.home_button
 
     def closeEvent(self, event):
         print("Closing Dashboard...")
@@ -215,7 +216,7 @@ class DashboardWindow(QMainWindow):
         # Check if it has the method we need (duck typing)
         if hasattr(current_page, 'close_active_child_window') and callable(current_page.close_active_child_window):
             print(f"Asking page '{current_page.objectName()}' to close its child window...")
-            current_page.close_active_child_window() # Ask the current page to close its window
+            current_page.close_active_child_window()  # Ask the current page to close its window
 
         # Confirm exit
         reply = QMessageBox.question(self, 'Confirm Exit',
@@ -224,11 +225,11 @@ class DashboardWindow(QMainWindow):
                                      QMessageBox.StandardButton.No)
 
         if reply == QMessageBox.StandardButton.Yes:
-             print("Exiting application.")
-             event.accept()
+            print("Exiting application.")
+            event.accept()
         else:
-             print("Exit cancelled.")
-             event.ignore()
+            print("Exit cancelled.")
+            event.ignore()
 
 # --- Testing Block (Optional, better to use main.py) ---
 if __name__ == '__main__':

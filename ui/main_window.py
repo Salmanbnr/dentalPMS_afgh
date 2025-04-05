@@ -1,13 +1,11 @@
-# dental_clinic/ui/main_window.py
 import sys
 from PyQt6.QtWidgets import (
-    # Remove QMainWindow, QStackedLayout (if not needed internally)
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QAbstractItemView,
-    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy,QMainWindow
+    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy, QMainWindow, QStackedWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QIcon, QColor, QPalette # Keep QPixmap if used for something else later
+from PyQt6.QtGui import QIcon, QColor, QPalette
 import qtawesome as qta
 from pathlib import Path
 
@@ -19,10 +17,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 try:
     from database.data_manager import get_all_patients, delete_patient
-    # Use relative imports for sibling modules within 'ui'
-    from .add_patient_dialog import AddPatientDialog
-    from .view_edit_patient_window import PatientViewEditWindow
-    from database.schema import initialize_database # Keep for testing block if needed
+    from ui.add_patient_dialog import AddPatientDialog
+    from ui.view_edit_patient_window import PatientViewEditWindow
+    from database.schema import initialize_database  # Keep for testing block if needed
 except ImportError as e:
     print(f"Error importing UI/DB modules in main_window.py: {e}")
     print("Ensure the script is run where PROJECT_ROOT is correctly determined,")
@@ -37,9 +34,7 @@ except ImportError as e:
         print("Failed to import necessary modules using relative paths.")
         sys.exit(1)
 
-
 # --- Styling specific to the Patient List Page ---
-# (Adapted from the previous dashboard stylesheet, focusing on elements within this widget)
 COLOR_PRIMARY = "#2c3e50"
 COLOR_SECONDARY = "#ecf0f1"
 COLOR_ACCENT = "#3498db"
@@ -148,28 +143,23 @@ PATIENT_PAGE_STYLESHEET = f"""
     }}
 """
 
-# *** RENAME class and change inheritance ***
 class PatientListPage(QWidget):
     """Widget managing the patient list display and operations."""
-    # Signal emitted when the view/edit window needs closing (e.g., before deletion)
-    # request_close_child_window = pyqtSignal(int) # Removed, direct call is simpler
-
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("PatientListPage") # For QSS styling
-        self.setStyleSheet(PATIENT_PAGE_STYLESHEET) # Apply styles to this widget
+        self.setObjectName("PatientListPage")  # For QSS styling
+        self.setStyleSheet(PATIENT_PAGE_STYLESHEET)  # Apply styles to this widget
 
         # --- Keep track of the opened view/edit window ---
         self.view_edit_win_instance = None
 
         # --- Main Layout for this widget ---
-        # No QMainWindow central widget or stacked layout needed here
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(15, 15, 15, 15) # Add padding within the page
+        main_layout.setContentsMargins(15, 15, 15, 15)  # Add padding within the page
         main_layout.setSpacing(15)
 
         # --- Toolbar / Header Area ---
-        header_frame = QFrame()  # Use a frame for better structure/styling if needed
+        header_frame = QFrame()
         header_frame.setObjectName("HeaderFrame")
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 0)  # No internal margins for layout
@@ -214,10 +204,8 @@ class PatientListPage(QWidget):
 
         main_layout.addWidget(header_frame)  # Add the frame containing the header controls
 
-        
         # --- Patient Table ---
         self.patient_table = QTableWidget()
-        # self.patient_table.setObjectName("PatientTable") # Not needed if styling via #PatientListPage QTableWidget
         self.patient_table.setColumnCount(5)
         self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "Father's Name", "Phone Number", "Address"])
         self.patient_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -240,8 +228,6 @@ class PatientListPage(QWidget):
         # --- Load Initial Data ---
         self.load_patients()
 
-    # --- Methods (largely unchanged, but adjust message box parents) ---
-
     def handle_double_click(self, item):
         if self.get_selected_patient_id() is not None:
             self.open_view_edit_patient_window()
@@ -252,7 +238,6 @@ class PatientListPage(QWidget):
         try:
             patients = get_all_patients(search_term)
         except Exception as e:
-            # Use self.window() to get the parent QMainWindow for message boxes
             QMessageBox.critical(self.window(), "Database Error", f"Could not retrieve patient list.\nError: {e}")
             patients = None
 
@@ -305,7 +290,6 @@ class PatientListPage(QWidget):
         return None
 
     def open_add_patient_dialog(self):
-        # Parent the dialog to the top-level window (the Dashboard)
         dialog = AddPatientDialog(parent=self.window())
         dialog.patient_added.connect(lambda: self.load_patients(self.search_input.text().strip()))
         dialog.exec()
@@ -316,41 +300,35 @@ class PatientListPage(QWidget):
             QMessageBox.warning(self.window(), "Selection Error", "Please select a patient from the table.")
             return
 
-        # Window management logic (same as before, just within this widget)
+        # Window management logic
         if self.view_edit_win_instance and self.view_edit_win_instance.isVisible():
-             try:
-                 if self.view_edit_win_instance.current_patient_id == patient_id:
-                     self.view_edit_win_instance.activateWindow()
-                     self.view_edit_win_instance.raise_()
-                     return
-                 else:
-                     self.view_edit_win_instance.close()
-             except (AttributeError, RuntimeError):
-                 self.view_edit_win_instance = None
+            if self.view_edit_win_instance.current_patient_id == patient_id:
+                self.view_edit_win_instance.activateWindow()
+                self.view_edit_win_instance.raise_()
+                return
+            else:
+                self.view_edit_win_instance.close()
 
         print(f"Opening View/Edit window for patient {patient_id}.")
-        # Create as standalone window (parent=None)
-        self.view_edit_win_instance = PatientViewEditWindow(patient_id=patient_id, parent=None)
-        self.view_edit_win_instance.destroyed.connect(self.on_view_edit_destroyed)
+        # Create as a widget within the stacked layout
+        self.view_edit_win_instance = PatientViewEditWindow(patient_id=patient_id, parent=self)
 
-        if hasattr(self.view_edit_win_instance, 'data_changed'):
-             self.view_edit_win_instance.data_changed.connect(self.handle_data_changed)
+        # Connect the signal after the instance is created
+        self.view_edit_win_instance.back_button_clicked.connect(self.window().show_home_page)
 
-        self.view_edit_win_instance.show()
+        self.view_edit_win_instance.data_changed.connect(self.handle_data_changed)
 
-
-    def on_view_edit_destroyed(self):
-        print("PatientListPage: View/Edit window destroyed signal received.")
-        if self.sender() == self.view_edit_win_instance:
-             self.view_edit_win_instance = None
+        # Add the view/edit window to the stacked widget
+        parent_main_window = self.window()
+        if hasattr(parent_main_window, 'content_stack'):
+            parent_main_window.content_stack.addWidget(self.view_edit_win_instance)
+            parent_main_window.content_stack.setCurrentWidget(self.view_edit_win_instance)
         else:
-             print("PatientListPage: Destroyed signal received from unexpected sender.")
-
+            print("Error: Parent window does not have a content stack.")
 
     def handle_data_changed(self, patient_id):
         print(f"PatientListPage: Data changed signal received for patient {patient_id}. Reloading list.")
         self.load_patients(self.search_input.text().strip())
-
 
     def delete_selected_patient(self):
         patient_id = self.get_selected_patient_id()
@@ -370,7 +348,7 @@ class PatientListPage(QWidget):
 
         if reply == QMessageBox.StandardButton.Yes:
             # Close the detail window if it's open for the patient being deleted
-            self.close_active_child_window(patient_id_to_match=patient_id) # Pass ID to ensure correct window is closed
+            self.close_active_child_window(patient_id_to_match=patient_id)
 
             try:
                 success = delete_patient(patient_id)
@@ -382,7 +360,7 @@ class PatientListPage(QWidget):
                 else:
                     QMessageBox.critical(self.window(), "Database Error", f"An error occurred while deleting patient '{patient_name}'.")
             except Exception as e:
-                 QMessageBox.critical(self.window(), "Deletion Error", f"An unexpected error occurred: {e}")
+                QMessageBox.critical(self.window(), "Deletion Error", f"An unexpected error occurred: {e}")
 
     def close_active_child_window(self, patient_id_to_match=None):
         """
@@ -396,27 +374,17 @@ class PatientListPage(QWidget):
                     # Check if the window instance has the expected ID
                     if (not hasattr(self.view_edit_win_instance, 'current_patient_id') or
                         self.view_edit_win_instance.current_patient_id != patient_id_to_match):
-                        close_it = False # Don't close if ID doesn't match
+                        close_it = False
                 except (AttributeError, RuntimeError):
-                    # If attribute missing or window deleted, proceed as if it doesn't match
-                    close_it = False
-                    self.view_edit_win_instance = None # Clear potentially dead reference
+                    self.view_edit_win_instance = None
 
             if close_it:
                 print(f"PatientListPage: Closing active child view/edit window (Matching ID: {patient_id_to_match is not None}).")
                 try:
-                    self.view_edit_win_instance.close() # Should trigger destroyed signal
-                    # Explicitly setting to None here might be redundant if destroyed signal works reliably
-                    # self.view_edit_win_instance = None
-                except RuntimeError: # Catch if window was already deleted
-                     print("PatientListPage: Child window already deleted.")
-                     self.view_edit_win_instance = None
-            # else: # Optional: print if not closing due to ID mismatch
-            #      print(f"PatientListPage: Child window open, but not closing (ID mismatch or check failed).")
-
-
-    # Remove closeEvent as this is now a QWidget, not a QMainWindow
-
+                    self.view_edit_win_instance.close()
+                except RuntimeError:
+                    print("PatientListPage: Child window already deleted.")
+                    self.view_edit_win_instance = None
 
 # --- Testing Block (Optional: for testing PatientListPage in isolation) ---
 if __name__ == '__main__':
@@ -427,12 +395,9 @@ if __name__ == '__main__':
         print("Database initialized/verified successfully.")
 
     app = QApplication(sys.argv)
-    # app.setStyle("Fusion") # Apply style if needed for testing
 
     test_widget = PatientListPage()
     # Since it's a QWidget, show it directly or embed in a basic QMainWindow for testing
-    # test_widget.show()
-    # OR more realistically:
     test_win = QMainWindow()
     test_win.setCentralWidget(test_widget)
     test_win.setWindowTitle("Patient List Page Test")

@@ -1,5 +1,3 @@
-# ui/patient/patient_detail_widget.py
-
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                              QMessageBox, QFormLayout, QGroupBox, QScrollArea,
