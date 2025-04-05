@@ -5,7 +5,7 @@ from database.data_manager import (get_visit_by_id, add_visit, update_visit_deta
                                  add_service_to_visit, remove_service_from_visit,
                                  add_prescription_to_visit, remove_prescription_from_visit,
                                  get_services_for_visit, get_prescriptions_for_visit,
-                                 update_visit_payment)
+                                 update_visit_payment, calculate_visit_number)
 
 def load_initial_data(patient_id, is_editing, visit_id=None):
     """Load patient, services, meds, and existing visit data if editing."""
@@ -115,15 +115,6 @@ def load_visit_data(visit_id):
 
     return visit_data, patient_data, services, prescriptions
 
-def calculate_visit_number(patient_id, visit_date):
-    """Calculate the visit number for a patient based on the visit date."""
-    query = """
-    SELECT COUNT(*)
-    FROM visits v
-    WHERE v.patient_id = ? AND v.visit_date <= ?
-    """
-    result = _execute_query(query, (patient_id, visit_date), fetch_one=True)
-    return result.get('COUNT(*)', 0) if result else 0
 
 def _execute_query(query, params=(), fetch_one=False, fetch_all=False, commit=False):
     """Helper function to execute SQL queries."""
