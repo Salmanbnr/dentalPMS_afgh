@@ -29,12 +29,16 @@ class PatientViewEditWindow(QMainWindow):
         self.resize(800, 650)
         self.setWindowIcon(qta.icon('fa5s.notes-medical'))
 
+        # Create main widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
+        
+        # Main layout
         self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)  # Adjust margins if needed
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(15)
 
+        # Add back button
         self.back_button = QPushButton(qta.icon('fa5s.arrow-left', color='white'), " Back")
         self.back_button.setStyleSheet("""
             QPushButton {
@@ -49,13 +53,17 @@ class PatientViewEditWindow(QMainWindow):
             }
         """)
         self.back_button.clicked.connect(self.on_back_button_clicked)
+        self.back_button.setFixedHeight(50)
         self.main_layout.addWidget(self.back_button, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.detail_area = PatientDetailWidget()
+        # Create a patient detail widget with the buttons at the bottom
+        self.detail_area = CustomPatientDetailWidget(patient_id)
         self.main_layout.addWidget(self.detail_area)
-
-        self.load_patient_data(self.current_patient_id)
-
+        
+        # Connect signals for buttons that may be in the detail widget
+        self.detail_area.connect_signals()
+        
+        # Set global stylesheet
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #f5f6fa;
@@ -106,13 +114,6 @@ class PatientViewEditWindow(QMainWindow):
             }
         """)
 
-    def load_patient_data(self, patient_id):
-        if patient_id:
-            self.detail_area.load_patient(patient_id)
-        else:
-            self.detail_area.clear_details()
-            self.detail_area.patient_info_group.setTitle("No Patient ID Provided")
-
     def on_back_button_clicked(self):
         self.back_button_clicked.emit()
 
@@ -120,3 +121,51 @@ class PatientViewEditWindow(QMainWindow):
         print(f"Closing PatientViewEditWindow for patient ID: {self.current_patient_id}")
         self.data_changed.emit(self.current_patient_id)
         super().closeEvent(event)
+
+
+class CustomPatientDetailWidget(QWidget):
+    """
+    Extended PatientDetailWidget that handles its own scrolling and ensures
+    all buttons are visible within the scrollable area.
+    """
+    def __init__(self, patient_id, parent=None):
+        super().__init__(parent)
+        
+        # Main layout without scrolling
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        
+        # Create scroll area for the contents
+        self.scroll_area = QFrame()
+        self.scroll_area_layout = QVBoxLayout(self.scroll_area)
+        self.scroll_area_layout.setContentsMargins(0, 0, 10, 0)  # Right margin for scrollbar
+        self.scroll_area_layout.setSpacing(15)
+        
+        # Create the actual PatientDetailWidget and add it to scroll area
+        self.detail_widget = PatientDetailWidget()
+        self.scroll_area_layout.addWidget(self.detail_widget)
+        
+        # Add the scroll area to the main layout
+        self.main_layout.addWidget(self.scroll_area)
+        
+        # Load patient data
+        self.load_patient(patient_id)
+        
+    def load_patient(self, patient_id):
+        if patient_id:
+            self.detail_widget.load_patient(patient_id)
+        else:
+            self.detail_widget.clear_details()
+            self.detail_widget.patient_info_group.setTitle("No Patient ID Provided")
+    
+    def connect_signals(self):
+        """Connect any signals from the detail widget to this widget"""
+        # Add any signal connections needed here
+        # For example: self.detail_widget.some_signal.connect(self.some_handler)
+        pass
+    
+    def resizeEvent(self, event):
+        """Handle resize events to update the layout if needed"""
+        super().resizeEvent(event)
+        # Any additional resize handling would go here

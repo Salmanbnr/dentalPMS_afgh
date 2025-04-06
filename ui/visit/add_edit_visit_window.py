@@ -1,16 +1,14 @@
-# ui/visit/add_edit_visit_window.py
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
                              QPushButton, QMessageBox, QFormLayout, QGroupBox,
                              QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QSpinBox,
-                             QDoubleSpinBox, QDateEdit, QAbstractItemView, QLineEdit, QScrollArea)
-from PyQt6.QtCore import pyqtSignal, Qt, QSize, QDate
+                             QDoubleSpinBox, QDateEdit, QAbstractItemView, QLineEdit, QScrollArea, QApplication,QSpacerItem,QSizePolicy)
+from PyQt6.QtCore import pyqtSignal, Qt, QDate
 import qtawesome as qta
-from pathlib import Path
 
-from database.data_manager import (add_prescription_to_visit, add_service_to_visit, get_medication_by_id, 
-                                  get_patient_by_id, get_prescriptions_for_visit, get_service_by_id, 
-                                  get_services_for_visit, remove_prescription_from_visit, 
+from database.data_manager import (add_prescription_to_visit, add_service_to_visit, get_medication_by_id,
+                                  get_patient_by_id, get_prescriptions_for_visit, get_service_by_id,
+                                  get_services_for_visit, remove_prescription_from_visit,
                                   remove_service_from_visit, get_visit_by_id)
 from model.visit_manager import load_initial_data, save_visit_details, add_new_visit
 
@@ -39,68 +37,111 @@ class AddEditVisitWindow(QWidget):
         # Set up modern styling
         self.setStyleSheet("""
             QWidget {
-                font-family: 'Arial', sans-serif;
-                font-size: 14px;
-                background-color: #f5f6fa;
-                color: #333;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 10pt;
+                background-color: #ecf0f1;
+                color: #2c3e50;
             }
             QGroupBox {
-                border: 1px solid #ddd;
+                background-color: #ffffff;
+                border: 1px solid #bdc3c7;
                 border-radius: 8px;
                 margin-top: 1ex;
                 padding: 15px;
-                background-color: white;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                padding-top: 25px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-                font-size: 16px;
-                font-weight: bold;
-                color: #2c3e50;
-            }
-            QPushButton {
+                subcontrol-position: top left;
+                left: 15px;
+                padding: 5px 10px;
                 background-color: #3498db;
                 color: white;
-                border-radius: 5px;
-                padding: 10px 20px;
-                border: none;
                 font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QTextEdit, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                padding: 8px;
-                background-color: white;
-            }
-            QTableWidget {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: white;
-                gridline-color: #eee;
-            }
-            QTableWidget::item {
-                padding: 8px;
+                font-size: 11pt;
+                border-radius: 4px;
             }
             QLabel {
-                padding: 5px;
+                padding: 2px;
+                font-weight: normal;
+                color: #34495e;
+            }
+            QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 6px 8px;
+                background-color: #ffffff;
+                min-height: 28px;
+            }
+            QPushButton {
+                border-radius: 4px;
+                padding: 8px 18px;
+                font-size: 10pt;
                 font-weight: bold;
-                color: #2c3e50;
+                border: none;
+                min-height: 28px;
+                color: white;
+            }
+            QPushButton:hover {
+                opacity: 0.9;
+            }
+            QPushButton:pressed {
+                opacity: 0.7;
+            }
+            QPushButton:disabled {
+                background-color: #bdc3c7;
+                color: #7f8c8d;
+            }
+            QTableWidget {
+                border: 1px solid #bdc3c7;
+                border-radius: 6px;
+                background-color: #ffffff;
+                gridline-color: #e0e0e0;
+                selection-background-color: #3498db;
+                selection-color: white;
+            }
+            QTableWidget::item {
+                padding: 8px 10px;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            QTableWidget::item:selected {
+                background-color: #2980b9;
+                color: white;
+            }
+            QHeaderView::section {
+                background-color: #eaeaed;
+                color: #34495e;
+                padding: 8px;
+                border: none;
+                border-bottom: 1px solid #bdc3c7;
+                font-weight: bold;
+                font-size: 10pt;
             }
             QScrollArea {
                 border: none;
-                background-color: #f5f6fa;
+                background-color: #ecf0f1;
+            }
+            QScrollBar:vertical {
+                border: 1px solid #bdc3c7;
+                background: #ffffff;
+                width: 12px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #bdc3c7;
+                min-height: 25px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #95a5a6;
             }
         """)
 
         # Main layout with scroll area
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(20)
+        self.main_layout.setSpacing(15)
 
         # Scrollable content widget
         self.content_widget = QWidget()
@@ -158,7 +199,7 @@ class AddEditVisitWindow(QWidget):
         self.service_price_input.setDecimals(2)
         self.service_price_input.setFixedWidth(120)
 
-        self.service_notes_input = QTextEdit()  # Changed to QTextEdit for larger field
+        self.service_notes_input = QTextEdit()
         self.service_notes_input.setPlaceholderText("Enter service notes (optional)...")
         self.service_notes_input.setMinimumHeight(80)
 
@@ -183,10 +224,7 @@ class AddEditVisitWindow(QWidget):
         self.services_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self.services_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.services_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.services_table.setMinimumHeight(200)  # Vertically larger table
-        # Alternative dynamic resizing (uncomment to use instead of fixed height):
-        # self.services_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        # self.services_table.resizeRowsToContents()
+        self.services_table.setMinimumHeight(200)
 
         services_layout.addLayout(add_service_layout)
         services_layout.addWidget(self.services_table)
@@ -238,10 +276,7 @@ class AddEditVisitWindow(QWidget):
         self.prescriptions_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self.prescriptions_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.prescriptions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.prescriptions_table.setMinimumHeight(200)  # Vertically larger table
-        # Alternative dynamic resizing (uncomment to use instead of fixed height):
-        # self.prescriptions_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        # self.prescriptions_table.resizeRowsToContents()
+        self.prescriptions_table.setMinimumHeight(200)
 
         prescriptions_layout.addLayout(add_prescription_layout)
         prescriptions_layout.addWidget(self.prescriptions_table)
@@ -279,6 +314,10 @@ class AddEditVisitWindow(QWidget):
         action_layout.addWidget(self.save_button)
         action_layout.addWidget(self.cancel_button)
         self.content_layout.addLayout(action_layout)
+
+        # Add spacer for additional space at the bottom
+        self.content_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        self.content_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
         # Ensure initial population if editing
         if self.is_editing:
@@ -422,9 +461,6 @@ class AddEditVisitWindow(QWidget):
             table.setCellWidget(row, 5, remove_button)
 
         table.resizeColumnsToContents()
-        # Uncomment for dynamic resizing:
-        # table.resizeRowsToContents()
-        # table.setFixedHeight(table.verticalHeader().length() + table.horizontalHeader().height())
 
     def remove_service_item(self, button):
         row = button.property("row")
@@ -524,7 +560,6 @@ class AddEditVisitWindow(QWidget):
         self.update_financial_summary()
 
 if __name__ == '__main__':
-    from PyQt6.QtWidgets import QApplication
     try:
         from database.schema import initialize_database
         from database.data_manager import add_patient, add_service, add_medication

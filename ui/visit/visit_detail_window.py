@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdi
                              QMessageBox, QFormLayout, QGroupBox, QPushButton,
                              QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QLineEdit, QAbstractItemView, QScrollArea, QApplication, QGridLayout, QAbstractSpinBox,
-                             QSizePolicy)
+                             QSizePolicy,QSpacerItem)
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
 from PyQt6.QtGui import QDoubleValidator, QPalette, QColor
 import qtawesome as qta
@@ -71,6 +71,9 @@ class VisitDetailWindow(QWidget):
         self.main_layout.addLayout(self.content_layout)
         self.main_layout.addLayout(self.action_layout)  # Add action buttons layout
 
+        # Add a spacer to create empty space at the bottom
+        self.main_layout.addSpacerItem(QSpacerItem(100, 100, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+
         # Set the widget for the scroll area
         self.scroll.setWidget(self.main_widget)
         self.setLayout(QVBoxLayout())
@@ -81,7 +84,6 @@ class VisitDetailWindow(QWidget):
         self._populate_services_table()
         self._populate_prescriptions_table()
         self._update_financial_summary()
-
     def show(self):
         """Show the window and disable the parent's scrollbar if applicable."""
         parent = self.parent()
