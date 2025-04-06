@@ -31,18 +31,17 @@ class VisitDetailWindow(QWidget):
 
     def __init__(self, visit_id, patient_id=None, parent=None):
         super().__init__(parent)
+        self.visit_id = visit_id  # Add this line to store the visit_id as an attribute
         self.model = VisitDetailModel(visit_id, patient_id)
         self.is_editing = False
-
         self._setup_ui()
         self._apply_styles()
         self._connect_signals()
         self._update_view_mode()  # Set initial state (view mode)
-
         # Set minimum size and window title
         self.setWindowTitle(f"Visit Details - ID: {visit_id}")
         self.setMinimumSize(950, 750)  # Slightly larger for better spacing
-
+        
     def _setup_ui(self):
         """Initialize the main UI structure and widgets."""
         # Main layout

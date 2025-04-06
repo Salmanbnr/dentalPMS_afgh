@@ -274,7 +274,7 @@ class PatientDetailWidget(QWidget):
             self.stacked_layout.setCurrentWidget(self.visit_detail_widget)
         else:
             print("Error: Could not get visit ID from list item.")
-
+            
     def handle_visit_saved(self, patient_id):
         """Called when AddEditVisitWindow signals a new visit is saved."""
         if patient_id == self.current_patient_id:
