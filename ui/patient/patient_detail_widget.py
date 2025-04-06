@@ -42,21 +42,25 @@ class PatientDetailWidget(QWidget):
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 margin-top: 1ex;
-                padding: 10px;
+                padding: 15px;
                 background-color: white;
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 3px 0 3px;
+                left: 15px;
+                padding: 5px 10px;
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 12pt;
+                border-radius: 4px;
             }
             QPushButton {
                 background-color: #3498db;
                 color: white;
                 border-radius: 5px;
-                padding: 8px 16px;
-                border: none;
+                padding: 10px 20px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -76,8 +80,8 @@ class PatientDetailWidget(QWidget):
         """)
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(15, 15, 15, 15)
-        self.main_layout.setSpacing(15)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(20)
 
         # Stacked layout for switching views
         self.stacked_layout = QStackedLayout()
@@ -86,7 +90,7 @@ class PatientDetailWidget(QWidget):
         # Patient and Visits Widget
         self.patient_and_visits_widget = QWidget()
         self.patient_and_visits_layout = QVBoxLayout(self.patient_and_visits_widget)
-        self.patient_and_visits_layout.setSpacing(15)
+        self.patient_and_visits_layout.setSpacing(20)
 
         # Patient Info Section
         self.patient_info_group = QGroupBox("Patient Information")
@@ -285,7 +289,6 @@ class PatientDetailWidget(QWidget):
         """Return to patient details view."""
         self.stacked_layout.setCurrentIndex(0)
         self.load_visits()
-
 if __name__ == '__main__':
     from PyQt6.QtWidgets import QApplication, QMainWindow
     try:

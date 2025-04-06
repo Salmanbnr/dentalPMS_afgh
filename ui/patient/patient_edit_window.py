@@ -1,4 +1,4 @@
-# ui/patient/patient_edit_window.py
+# dental_clinic/ui/patient/patient_edit_window.py
 import sys
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QLabel, QLineEdit,
                              QComboBox, QSpinBox, QTextEdit, QPushButton, QMessageBox,
