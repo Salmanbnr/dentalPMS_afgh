@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QFormLayout, QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
     QDateEdit, QAbstractItemView, QLineEdit, QScrollArea, QApplication, QSpacerItem, QSizePolicy,QGridLayout
 )
-from PyQt6.QtCore import pyqtSignal, Qt, QDate
+from PyQt6.QtCore import pyqtSignal, Qt, QDate,QSize
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
 
@@ -343,7 +343,6 @@ class AddEditVisitWindow(QWidget):
         layout.addLayout(add_layout)
         layout.addWidget(self.prescriptions_table)
         self.content_layout.addWidget(prescriptions_group)
-
     def create_payment_summary_section(self):
         """Section for displaying the financial summary including total, paid and due amounts."""
         payment_group = QGroupBox("Payment Summary")
@@ -509,16 +508,37 @@ class AddEditVisitWindow(QWidget):
             self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
             self.update_financial_summary()
 
-    def _add_row_to_table(self, table, item_data, is_service):
+    def _add_row_to_table(self, table: QTableWidget, item_data: dict, is_service: bool):
         """Helper method to add a row to the given table with a remove button."""
         row = table.rowCount()
         table.insertRow(row)
 
-        remove_button = QPushButton(qta.icon('fa5s.trash-alt', color='red'), "")
+        # Create a QWidget to hold the remove button
+        cell_widget = QWidget()
+        cell_layout = QHBoxLayout(cell_widget)
+        cell_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cell_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create remove button with trash icon
+        remove_button = QPushButton()
+        remove_button.setIcon(qta.icon('fa5s.trash-alt', color='#e74c3c'))  # Set explicit color
         remove_button.setToolTip(f"Remove this {'service' if is_service else 'prescription'}")
         remove_button.setProperty("row", row)
-        remove_button.setStyleSheet("QPushButton { background: transparent; border: none; }")
+        remove_button.setIconSize(QSize(15, 15))  # Increase icon size for better visibility
+        remove_button.setFixedSize(15, 15)  # Set fixed size for the button
+        remove_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                padding: -10px;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+                border-radius: -2px;
+            }
+        """)
 
+        # Fill table row with data and attach remove button
         if is_service:
             item_id = item_data.get('visit_service_id') or item_data.get('service_id')
             name = item_data.get('service_name', 'N/A')
@@ -534,7 +554,6 @@ class AddEditVisitWindow(QWidget):
             table.setItem(row, 2, QTableWidgetItem(tooth))
             table.setItem(row, 3, QTableWidgetItem(f"{price:.2f}"))
             table.setItem(row, 4, QTableWidgetItem(notes))
-            table.setCellWidget(row, 5, remove_button)
         else:
             item_id = item_data.get('visit_prescription_id') or item_data.get('medication_id')
             name = item_data.get('medication_name', 'N/A')
@@ -550,10 +569,11 @@ class AddEditVisitWindow(QWidget):
             table.setItem(row, 2, QTableWidgetItem(qty))
             table.setItem(row, 3, QTableWidgetItem(f"{price:.2f}"))
             table.setItem(row, 4, QTableWidgetItem(instructions))
-            table.setCellWidget(row, 5, remove_button)
 
-        table.resizeColumnsToContents()
-
+        # Add the remove button to the last column
+        cell_layout.addWidget(remove_button)
+        table.setCellWidget(row, 5, cell_widget)
+        
     def remove_service_item(self, button):
         """Remove a service row from the table and database if editing."""
         row = button.property("row")
@@ -562,7 +582,7 @@ class AddEditVisitWindow(QWidget):
         if row is None:
             return
 
-        confirm = QMessageBox.question(self, "Confirm", "Remove this service?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = self.show_confirmation_dialog("Confirm", "Remove this service?")
         if confirm == QMessageBox.StandardButton.Yes:
             if self.is_editing and visit_service_id:
                 if remove_service_from_visit(visit_service_id):
@@ -575,7 +595,7 @@ class AddEditVisitWindow(QWidget):
                 self.services_table.removeRow(row)
                 self.update_row_properties(self.services_table, row)
                 self.update_financial_summary()
-
+    
     def remove_prescription_item(self, button):
         """Remove a prescription row from the table and database if editing."""
         row = button.property("row")
@@ -584,7 +604,7 @@ class AddEditVisitWindow(QWidget):
         if row is None:
             return
 
-        confirm = QMessageBox.question(self, "Confirm", "Remove this prescription?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = self.show_confirmation_dialog("Confirm", "Remove this prescription?")
         if confirm == QMessageBox.StandardButton.Yes:
             if self.is_editing and visit_prescription_id:
                 if remove_prescription_from_visit(visit_prescription_id):
@@ -597,7 +617,39 @@ class AddEditVisitWindow(QWidget):
                 self.prescriptions_table.removeRow(row)
                 self.update_row_properties(self.prescriptions_table, row)
                 self.update_financial_summary()
+    def show_confirmation_dialog(self, title, message):
+        """Show a confirmation dialog with custom styled Yes and No buttons."""
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
+        # Style the Yes and No buttons
+        yes_button = msg_box.button(QMessageBox.StandardButton.Yes)
+        no_button = msg_box.button(QMessageBox.StandardButton.No)
+
+        button_style = """
+            QPushButton {
+                background-color: #3498db;  /* Blue color for Yes button */
+                color: white;
+                border-radius: 4px;
+                padding: 8px 18px;
+                font-size: 10pt;
+                font-weight: bold;
+                min-height: 28px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;  /* Darker blue on hover */
+            }
+            QPushButton:pressed {
+                background-color: #2471a3;  /* Even darker blue on press */
+            }
+        """
+
+        yes_button.setStyleSheet(button_style)
+        no_button.setStyleSheet(button_style.replace("#3498db", "#e74c3c").replace("#2980b9", "#c0392b").replace("#2471a3", "#a93226"))
+
+        return msg_box.exec()
     def update_row_properties(self, table, removed_row):
         """Update the row property for buttons after a removal so that the row numbers are consistent."""
         for row in range(removed_row, table.rowCount()):
