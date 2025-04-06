@@ -1,9 +1,11 @@
 import sys
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
-                             QPushButton, QMessageBox, QFormLayout, QGroupBox,
-                             QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
-                             QDateEdit, QAbstractItemView, QLineEdit, QScrollArea, QApplication, QSpacerItem, QSizePolicy)
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QPushButton, QMessageBox, 
+    QFormLayout, QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, 
+    QDateEdit, QAbstractItemView, QLineEdit, QScrollArea, QApplication, QSpacerItem, QSizePolicy
+)
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
+from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
 
 from database.data_manager import (add_prescription_to_visit, add_service_to_visit, get_medication_by_id,
@@ -29,139 +31,39 @@ class AddEditVisitWindow(QWidget):
         self.available_services = {}
         self.available_medications = {}
 
-        # Load initial data first
         if not self.load_initial_data():
             QMessageBox.critical(self, "Error", "Could not load necessary data.")
             return
 
-        # Set up modern styling
-        self.setStyleSheet("""
-            QWidget {
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 12pt;
-                background-color: #f4f6f8;
-                color: #2c3e50;
-            }
-            QGroupBox {
-                background-color: #ffffff;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 1ex;
-                padding: 20px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                left: 15px;
-                padding: 5px 10px;
-                background-color: #3498db;
-                color: white;
-                font-weight: bold;
-                font-size: 12pt;
-                border-radius: 4px;
-            }
-            QLabel {
-                padding: 2px;
-                font-weight: normal;
-                color: #34495e;
-            }
-            QLineEdit, QTextEdit, QComboBox, QDateEdit {
-                border: 1px solid #bdc3c7;
-                border-radius: 4px;
-                padding: 10px;
-                background-color: #ffffff;
-                min-height: 40px;
-            }
-            QPushButton {
-                border-radius: 4px;
-                padding: 10px 20px;
-                font-size: 12pt;
-                font-weight: bold;
-                border: none;
-                min-height: 40px;
-                color: white;
-                background-color: #3498db;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QPushButton:pressed {
-                background-color: #1f6391;
-            }
-            QPushButton:disabled {
-                background-color: #bdc3c7;
-                color: #7f8c8d;
-            }
-            QTableWidget {
-                border: 1px solid #bdc3c7;
-                border-radius: 6px;
-                background-color: #ffffff;
-                gridline-color: #e0e0e0;
-                selection-background-color: #3498db;
-                selection-color: white;
-            }
-            QTableWidget::item {
-                padding: 10px;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            QTableWidget::item:selected {
-                background-color: #2980b9;
-                color: white;
-            }
-            QHeaderView::section {
-                background-color: #eaeef1;
-                color: #34495e;
-                padding: 10px;
-                border: none;
-                border-bottom: 1px solid #bdc3c7;
-                font-weight: bold;
-                font-size: 12pt;
-            }
-            QScrollArea {
-                border: none;
-                background-color: #f4f6f8;
-            }
-            QScrollBar:vertical {
-                border: 1px solid #bdc3c7;
-                background: #ffffff;
-                width: 12px;
-                margin: 0px 0px 0px 0px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background: #bdc3c7;
-                min-height: 25px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #95a5a6;
-            }
-        """)
+        self.setWindowTitle("Add/Edit Visit")
+        self.setStyleSheet(self.get_stylesheet())
+        self.setMinimumSize(900, 700)
 
-        # Main layout with scroll area
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(15)
 
-        # Scrollable content widget
+        # Create a scrollable content area
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setSpacing(20)
 
-        # Scroll area setup
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.content_widget)
         self.main_layout.addWidget(self.scroll_area)
 
-        # Patient Info
+        # Patient Info Header
         patient_info_layout = QHBoxLayout()
-        patient_info_layout.addWidget(QLabel(f"<b>Patient:</b> {self.patient_data.get('name', 'Unknown')} (ID: {self.patient_id})"))
+        patient_label = QLabel(f"<b>Patient:</b> {self.patient_data.get('name', 'Unknown')} (ID: {self.patient_id})")
+        patient_label.setFont(QFont("Segoe UI", 12))
+        patient_info_layout.addWidget(patient_label)
         patient_info_layout.addStretch()
         self.content_layout.addLayout(patient_info_layout)
 
-        # Visit Details
+        # Visit Details Section
         visit_details_group = QGroupBox("Visit Details")
+        visit_details_group.setStyleSheet("QGroupBox { margin-top: 10px; }")
         visit_form_layout = QFormLayout(visit_details_group)
         visit_form_layout.setSpacing(15)
 
@@ -169,18 +71,19 @@ class AddEditVisitWindow(QWidget):
         self.visit_date_input.setCalendarPopup(True)
         self.visit_notes_input = QTextEdit()
         self.visit_notes_input.setPlaceholderText("Enter general notes about the visit...")
-        self.visit_notes_input.setMinimumHeight(150)  # Increased height
+        self.visit_notes_input.setMinimumHeight(200)
         self.lab_results_input = QTextEdit()
         self.lab_results_input.setPlaceholderText("Enter lab results or references...")
-        self.lab_results_input.setMinimumHeight(150)  # Increased height
+        self.lab_results_input.setMinimumHeight(200)
 
         visit_form_layout.addRow("Visit Date:", self.visit_date_input)
         visit_form_layout.addRow("Notes:", self.visit_notes_input)
         visit_form_layout.addRow("Lab Results:", self.lab_results_input)
         self.content_layout.addWidget(visit_details_group)
 
-        # Services
+        # Services Section
         services_group = QGroupBox("Services Performed")
+        services_group.setStyleSheet("QGroupBox { margin-top: 10px; }")
         services_layout = QVBoxLayout(services_group)
 
         add_service_layout = QHBoxLayout()
@@ -194,13 +97,14 @@ class AddEditVisitWindow(QWidget):
         self.service_tooth_input.setPlaceholderText("Tooth # (optional)")
         self.service_tooth_input.setFixedWidth(100)
 
-        self.service_price_input = QLineEdit()  # Changed to QLineEdit for a simpler input
-        self.service_price_input.setReadOnly(True)  # Make it read-only
+        self.service_price_input = QLineEdit()
+        self.service_price_input.setPlaceholderText("Enter price")
         self.service_price_input.setFixedWidth(120)
+        self.service_price_input.textChanged.connect(self.update_financial_summary)
 
         self.service_notes_input = QTextEdit()
         self.service_notes_input.setPlaceholderText("Enter service notes (optional)...")
-        self.service_notes_input.setMinimumHeight(100)  # Increased height
+        self.service_notes_input.setMinimumHeight(150)
 
         self.add_service_button = QPushButton(qta.icon('fa5s.plus-circle', color='white'), "Add Service")
         self.add_service_button.clicked.connect(self.add_service_item)
@@ -229,8 +133,9 @@ class AddEditVisitWindow(QWidget):
         services_layout.addWidget(self.services_table)
         self.content_layout.addWidget(services_group)
 
-        # Prescriptions
+        # Prescriptions Section
         prescriptions_group = QGroupBox("Prescriptions Issued")
+        prescriptions_group.setStyleSheet("QGroupBox { margin-top: 10px; }")
         prescriptions_layout = QVBoxLayout(prescriptions_group)
 
         add_prescription_layout = QHBoxLayout()
@@ -240,17 +145,19 @@ class AddEditVisitWindow(QWidget):
         self.med_combo.addItems(sorted(self.available_medications.keys()))
         self.med_combo.currentIndexChanged.connect(self.update_med_price)
 
-        self.med_qty_input = QLineEdit()  # Changed to QLineEdit for a simpler input
+        self.med_qty_input = QLineEdit()
         self.med_qty_input.setPlaceholderText("Quantity")
         self.med_qty_input.setFixedWidth(80)
+        self.med_qty_input.textChanged.connect(self.update_med_price)
 
-        self.med_price_input = QLineEdit()  # Changed to QLineEdit for a simpler input
-        self.med_price_input.setReadOnly(True)  # Make it read-only
+        self.med_price_input = QLineEdit()
+        self.med_price_input.setPlaceholderText("Total price")
         self.med_price_input.setFixedWidth(120)
+        self.med_price_input.textChanged.connect(self.update_financial_summary)
 
         self.med_instr_input = QTextEdit()
         self.med_instr_input.setPlaceholderText("Enter instructions (optional)...")
-        self.med_instr_input.setMinimumHeight(100)  # Increased height
+        self.med_instr_input.setMinimumHeight(150)
 
         self.add_med_button = QPushButton(qta.icon('fa5s.plus-circle', color='white'), "Add Medication")
         self.add_med_button.clicked.connect(self.add_prescription_item)
@@ -279,15 +186,17 @@ class AddEditVisitWindow(QWidget):
         prescriptions_layout.addWidget(self.prescriptions_table)
         self.content_layout.addWidget(prescriptions_group)
 
-        # Payment
+        # Payment Summary Section
         payment_group = QGroupBox("Payment Summary")
+        payment_group.setStyleSheet("QGroupBox { margin-top: 10px; }")
         payment_layout = QFormLayout(payment_group)
         payment_layout.setSpacing(15)
 
         self.total_amount_label = QLabel("0.00")
-        self.paid_amount_input = QLineEdit()  # Changed to QLineEdit for a simpler input
+        self.paid_amount_input = QLineEdit()
         self.paid_amount_input.setPlaceholderText("Amount Paid")
         self.paid_amount_input.setFixedWidth(120)
+        self.paid_amount_input.textChanged.connect(self.update_financial_summary)
         self.due_amount_label = QLabel("0.00")
 
         payment_layout.addRow("Total Amount:", self.total_amount_label)
@@ -310,16 +219,119 @@ class AddEditVisitWindow(QWidget):
         action_layout.addWidget(self.cancel_button)
         self.content_layout.addLayout(action_layout)
 
-        # Add spacer for additional space at the bottom
         self.content_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
-        # Ensure initial population if editing
         if self.is_editing:
             self.populate_fields_for_edit()
 
         self.update_service_price()
         self.update_med_price()
         self.update_financial_summary()
+
+    def get_stylesheet(self):
+        # Updated stylesheet with a modern, clean look and subtle shadows.
+        return """
+        QWidget {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 12pt;
+            background-color: #eef2f7;
+            color: #2c3e50;
+        }
+        QGroupBox {
+            background-color: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            margin-top: 1ex;
+            padding: 15px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 15px;
+            padding: 5px 10px;
+            background-color: #005f99;
+            color: white;
+            font-weight: bold;
+            font-size: 12pt;
+            border-radius: 4px;
+        }
+        QLabel {
+            padding: 2px;
+            font-weight: normal;
+            color: #34495e;
+        }
+        QLineEdit, QTextEdit, QComboBox, QDateEdit {
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            padding: 8px;
+            background-color: #ffffff;
+            min-height: 35px;
+        }
+        QPushButton {
+            border-radius: 4px;
+            padding: 8px 20px;
+            font-size: 12pt;
+            font-weight: bold;
+            border: none;
+            min-height: 35px;
+            color: white;
+            background-color: #005f99;
+        }
+        QPushButton:hover {
+            background-color: #004b80;
+        }
+        QPushButton:pressed {
+            background-color: #003f66;
+        }
+        QPushButton:disabled {
+            background-color: #d0d7de;
+            color: #7f8c8d;
+        }
+        QTableWidget {
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background-color: #ffffff;
+            gridline-color: #e0e0e0;
+            selection-background-color: #005f99;
+            selection-color: white;
+        }
+        QTableWidget::item {
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        QTableWidget::item:selected {
+            background-color: #004b80;
+            color: white;
+        }
+        QHeaderView::section {
+            background-color: #f0f4f8;
+            color: #34495e;
+            padding: 10px;
+            border: none;
+            border-bottom: 1px solid #d0d7de;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        QScrollArea {
+            border: none;
+            background-color: #eef2f7;
+        }
+        QScrollBar:vertical {
+            border: 1px solid #d0d7de;
+            background: #ffffff;
+            width: 12px;
+            margin: 0px;
+            border-radius: 6px;
+        }
+        QScrollBar::handle:vertical {
+            background: #d0d7de;
+            min-height: 25px;
+            border-radius: 6px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #95a5a6;
+        }
+        """
 
     def load_initial_data(self):
         data = load_initial_data(self.patient_id, self.is_editing, self.visit_id)
@@ -336,7 +348,6 @@ class AddEditVisitWindow(QWidget):
         self.visit_date_input.setDate(visit_date if visit_date.isValid() else QDate.currentDate())
         self.visit_notes_input.setPlainText(self.visit_data.get('notes', ''))
         self.lab_results_input.setPlainText(self.visit_data.get('lab_results', ''))
-
         self.paid_amount_input.setText(str(self.visit_data.get('paid_amount', 0.0)))
 
         visit_services = get_services_for_visit(self.visit_id)
@@ -361,7 +372,13 @@ class AddEditVisitWindow(QWidget):
     def update_med_price(self):
         med_name = self.med_combo.currentText()
         if med_name in self.available_medications:
-            self.med_price_input.setText(f"{self.available_medications[med_name]['price']:.2f}")
+            unit_price = self.available_medications[med_name]['price']
+            try:
+                qty = int(self.med_qty_input.text())
+            except ValueError:
+                qty = 1
+            total_price = unit_price * max(qty, 1)
+            self.med_price_input.setText(f"{total_price:.2f}")
 
     def add_service_item(self):
         service_name = self.service_combo.currentText()
@@ -372,7 +389,10 @@ class AddEditVisitWindow(QWidget):
         service_id = self.available_services[service_name]['id']
         tooth_str = self.service_tooth_input.text().strip()
         tooth_number = int(tooth_str) if tooth_str.isdigit() else None
-        price = float(self.service_price_input.text() or 0)
+        try:
+            price = float(self.service_price_input.text() or 0)
+        except ValueError:
+            price = 0.0
         notes = self.service_notes_input.toPlainText().strip()
 
         if self.is_editing:
@@ -395,8 +415,14 @@ class AddEditVisitWindow(QWidget):
             return
 
         med_id = self.available_medications[med_name]['id']
-        quantity = int(self.med_qty_input.text() or 1)
-        price = float(self.med_price_input.text() or 0)
+        try:
+            quantity = int(self.med_qty_input.text() or 1)
+        except ValueError:
+            quantity = 1
+        try:
+            price = float(self.med_price_input.text() or 0)
+        except ValueError:
+            price = 0.0
         instructions = self.med_instr_input.toPlainText().strip()
 
         if self.is_editing:
@@ -503,18 +529,28 @@ class AddEditVisitWindow(QWidget):
                 button.setProperty("row", row)
 
     def update_financial_summary(self):
-        total = sum(float(self.services_table.item(row, 3).text().replace(' ', '')) for row in range(self.services_table.rowCount()) if self.services_table.item(row, 3)) + \
-                sum(float(self.prescriptions_table.item(row, 3).text().replace(' ', '')) for row in range(self.prescriptions_table.rowCount()) if self.prescriptions_table.item(row, 3))
+        total_services = sum(float(self.services_table.item(row, 3).text().strip()) 
+                             for row in range(self.services_table.rowCount()) if self.services_table.item(row, 3))
+        total_prescriptions = sum(float(self.prescriptions_table.item(row, 3).text().strip()) 
+                                  for row in range(self.prescriptions_table.rowCount()) if self.prescriptions_table.item(row, 3))
+        total = total_services + total_prescriptions
 
         self.total_amount_label.setText(f"{total:.2f}")
-        due = max(0.0, total - float(self.paid_amount_input.text() or 0))
+        try:
+            paid = float(self.paid_amount_input.text() or 0)
+        except ValueError:
+            paid = 0.0
+        due = max(0.0, total - paid)
         self.due_amount_label.setText(f"{due:.2f}")
 
     def save_visit(self):
         visit_date = self.visit_date_input.date().toString("yyyy-MM-dd")
         notes = self.visit_notes_input.toPlainText().strip()
         lab_results = self.lab_results_input.toPlainText().strip()
-        paid_amount = float(self.paid_amount_input.text() or 0)
+        try:
+            paid_amount = float(self.paid_amount_input.text() or 0)
+        except ValueError:
+            paid_amount = 0.0
 
         if self.is_editing:
             if save_visit_details(self.visit_id, visit_date, notes, lab_results, paid_amount):
@@ -547,6 +583,7 @@ class AddEditVisitWindow(QWidget):
         self.prescriptions_table.setRowCount(0)
         self.update_financial_summary()
 
+
 if __name__ == '__main__':
     try:
         from database.schema import initialize_database
@@ -566,7 +603,6 @@ if __name__ == '__main__':
     app.setStyle('Fusion')
 
     window = AddEditVisitWindow(patient_id=4)
-    window.setMinimumSize(900, 700)  # Ensure window is large enough to show content
     window.show()
 
     sys.exit(app.exec())
