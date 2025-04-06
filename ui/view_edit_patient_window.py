@@ -19,7 +19,6 @@ class PatientViewEditWindow(QMainWindow):
     Window displaying detailed patient information and visit management.
     Uses a PatientDetailWidget to show patient details and manage visits.
     """
-    back_button_clicked = pyqtSignal()
     data_changed = pyqtSignal(int)
 
     def __init__(self, patient_id, parent=None):
@@ -37,24 +36,6 @@ class PatientViewEditWindow(QMainWindow):
         self.main_layout = QVBoxLayout(self.central_widget)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(15)
-
-        # Add back button
-        self.back_button = QPushButton(qta.icon('fa5s.arrow-left', color='white'), " Back")
-        self.back_button.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
-        self.back_button.clicked.connect(self.on_back_button_clicked)
-        self.back_button.setFixedHeight(50)
-        self.main_layout.addWidget(self.back_button, alignment=Qt.AlignmentFlag.AlignLeft)
 
         # Create a patient detail widget with the buttons at the bottom
         self.detail_area = CustomPatientDetailWidget(patient_id)
@@ -113,9 +94,6 @@ class PatientViewEditWindow(QMainWindow):
                 padding: 5px;
             }
         """)
-
-    def on_back_button_clicked(self):
-        self.back_button_clicked.emit()
 
     def closeEvent(self, event):
         print(f"Closing PatientViewEditWindow for patient ID: {self.current_patient_id}")

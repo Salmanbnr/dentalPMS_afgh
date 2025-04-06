@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QAbstractItemView,
-    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy, QMainWindow
+    QLineEdit, QMessageBox, QApplication, QFrame, QSizePolicy, QMainWindow, QScrollArea
 )
 from PyQt6.QtCore import Qt, QSize
 import qtawesome as qta
@@ -203,6 +203,13 @@ class PatientListPage(QWidget):
 
         main_layout.addWidget(header_frame)  # Add the frame containing the header controls
 
+        # --- Scroll Area for Patient Table ---
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet(PATIENT_PAGE_STYLESHEET)
+
         # --- Patient Table ---
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(5)
@@ -222,7 +229,8 @@ class PatientListPage(QWidget):
         self.patient_table.itemSelectionChanged.connect(self.update_button_states)
         self.patient_table.itemDoubleClicked.connect(self.handle_double_click)
 
-        main_layout.addWidget(self.patient_table)
+        scroll_area.setWidget(self.patient_table)
+        main_layout.addWidget(scroll_area)
 
         # --- Load Initial Data ---
         self.load_patients()
@@ -236,6 +244,8 @@ class PatientListPage(QWidget):
         self.patient_table.setRowCount(0)
         try:
             patients = get_all_patients(search_term)
+            
+            patients = sorted(patients, key=lambda x: x.get('last_updated', ''), reverse=True)
         except Exception as e:
             QMessageBox.critical(self.window(), "Database Error", f"Could not retrieve patient list.\nError: {e}")
             patients = None
@@ -269,7 +279,6 @@ class PatientListPage(QWidget):
 
         if new_selection_row != -1:
             self.patient_table.selectRow(new_selection_row)
-
     def filter_patients(self):
         search_term = self.search_input.text().strip()
         self.load_patients(search_term)
@@ -313,7 +322,7 @@ class PatientListPage(QWidget):
         self.view_edit_win_instance = PatientViewEditWindow(patient_id=patient_id, parent=self)
 
         # Connect the signal after the instance is created
-        self.view_edit_win_instance.back_button_clicked.connect(self.window().show_home_page)
+        # self.view_edit_win_instance.back_button_clicked.connect(self.window().show_home_page)
 
         self.view_edit_win_instance.data_changed.connect(self.handle_data_changed)
 
