@@ -1,4 +1,3 @@
-# ui/visit/visit_detail_window.py
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
                              QTableWidget, QTableWidgetItem, QHeaderView,
@@ -31,7 +30,7 @@ class VisitDetailWindow(QWidget):
 
     def __init__(self, visit_id, patient_id=None, parent=None):
         super().__init__(parent)
-        self.visit_id = visit_id  # Add this line to store the visit_id as an attribute
+        self.visit_id = visit_id  # Store the visit_id as an attribute
         self.model = VisitDetailModel(visit_id, patient_id)
         self.is_editing = False
         self._setup_ui()
@@ -41,13 +40,19 @@ class VisitDetailWindow(QWidget):
         # Set minimum size and window title
         self.setWindowTitle(f"Visit Details - ID: {visit_id}")
         self.setMinimumSize(950, 750)  # Slightly larger for better spacing
-        
+
     def _setup_ui(self):
         """Initialize the main UI structure and widgets."""
-        # Main layout
-        self.main_layout = QVBoxLayout(self)
+        # Main layout wrapped in a scroll area
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.main_widget = QWidget()
+        self.main_layout = QVBoxLayout(self.main_widget)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(15)  # Adjust spacing if needed
+        self.main_layout.setSpacing(15)
 
         # Content layout
         self.content_layout = QVBoxLayout()
@@ -66,11 +71,23 @@ class VisitDetailWindow(QWidget):
         self.main_layout.addLayout(self.content_layout)
         self.main_layout.addLayout(self.action_layout)  # Add action buttons layout
 
+        # Set the widget for the scroll area
+        self.scroll.setWidget(self.main_widget)
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(self.scroll)
+
         # Populate initial data
         self._populate_fields()
         self._populate_services_table()
         self._populate_prescriptions_table()
         self._update_financial_summary()
+
+    def show(self):
+        """Show the window and disable the parent's scrollbar if applicable."""
+        parent = self.parent()
+        if isinstance(parent, QScrollArea):  # Check if parent is a scrollable widget
+            parent.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        super().show()
 
     def _setup_patient_info(self):
         """Create the patient information group box."""
@@ -782,7 +799,10 @@ class VisitDetailWindow(QWidget):
         self._update_view_mode()  # Update UI to reflect viewing state
 
     def close_view(self):
-        """Close the window and emit the closed signal."""
+        """Close the window, emit the closed signal, and re-enable the parent's scrollbar if applicable."""
+        parent = self.parent()
+        if isinstance(parent, QScrollArea):  # Check if parent is a scrollable widget
+            parent.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.closed.emit()  # Emit the closed signal
         self.close()  # Close the current window
 
@@ -792,7 +812,6 @@ class VisitDetailWindow(QWidget):
             self.cancel_edit()
         else:
             self.close_view()
-    
 
     # --- Item Adding/Removing Logic ---
 
@@ -1089,6 +1108,7 @@ class VisitDetailWindow(QWidget):
             error_message = "Errors occurred during saving:\n\n" + "\n".join(f"- {e}" for e in db_errors)
             QMessageBox.critical(self, "Save Error", error_message)
             # Stay in edit mode for user to correct
+
 # --- Main Execution / Test ---
 if __name__ == '__main__':
 
