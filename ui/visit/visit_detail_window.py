@@ -1,66 +1,29 @@
+# ui/visit/visit_detail_window.py
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit,
                              QTableWidget, QTableWidgetItem, QHeaderView,
                              QMessageBox, QFormLayout, QGroupBox, QPushButton,
                              QDateEdit, QComboBox, QSpinBox, QDoubleSpinBox,
-                             QLineEdit, QAbstractItemView, QScrollArea, QApplication,QGridLayout,QAbstractSpinBox,
-                             QSizePolicy) # Added QApplication, QSizePolicy
+                             QLineEdit, QAbstractItemView, QScrollArea, QApplication, QGridLayout, QAbstractSpinBox,
+                             QSizePolicy)
 from PyQt6.QtCore import pyqtSignal, Qt, QDate
-from PyQt6.QtGui import QDoubleValidator, QPalette, QColor # Added QPalette, QColor
+from PyQt6.QtGui import QDoubleValidator, QPalette, QColor
 import qtawesome as qta
 from pathlib import Path
 
-from database.data_manager import get_medication_by_id
+from database.data_manager import add_service_to_visit, get_medication_by_id, get_services_for_visit, get_visit_by_id
+from model.visit_detail_window_model import DATABASE_AVAILABLE, VisitDetailModel, get_patient_by_id, get_service_by_id
 
-# --- Database/Model Imports (Keep your existing imports) ---
-# Mock functions for standalone testing if needed
-try:
-    # Assume these exist in your project structure
-    from database.data_manager import (get_patient_by_id, get_service_by_id, get_visit_by_id, get_services_for_visit,
-                                       get_prescriptions_for_visit, update_visit_details,
-                                       update_visit_payment, add_service_to_visit, remove_service_from_visit,
-                                       add_prescription_to_visit, remove_prescription_from_visit)
-    from model.visit_manager import load_visit_data, get_all_services, get_all_medications
-    DATABASE_AVAILABLE = True
-except ImportError:
-    DATABASE_AVAILABLE = False
-    print("Warning: Database modules not found. Using placeholder data.")
-    # --- Placeholder Functions (for running standalone without full DB setup) ---
-    def get_patient_by_id(id): return {'patient_id': id, 'name': f"Test Patient {id}"} if id == 4 else None
-    def get_service_by_id(id): return {'service_id': id, 'name': 'Cleaning', 'default_price': 50.0} if id == 1 else None
-    def get_visit_by_id(id): return {'visit_id': id, 'patient_id': 4, 'visit_date': '2023-04-05', 'notes': 'Initial checkup', 'lab_results': '', 'total_amount': 50.0, 'paid_amount': 20.0, 'due_amount': 30.0, 'visit_number': 101} if id == 9 else None
-    def get_services_for_visit(id): return [{'visit_service_id': 10, 'service_id': 1, 'service_name': 'Cleaning', 'tooth_number': None, 'price_charged': 50.0, 'notes': 'Routine cleaning'}] if id == 9 else []
-    def get_prescriptions_for_visit(id): return []
-    def update_visit_details(vid, date, notes, lab): print(f"Mock Update Visit {vid}: {date}, {notes}, {lab}"); return True
-    def update_visit_payment(vid, paid): print(f"Mock Update Payment {vid}: {paid}"); return True
-    def add_service_to_visit(vid, sid, tooth, price, notes): print(f"Mock Add Service {vid}: {sid}, {tooth}, {price}, {notes}"); return 11 # Return dummy ID
-    def remove_service_from_visit(vsid): print(f"Mock Remove Service {vsid}"); return True
-    def add_prescription_to_visit(vid, mid, qty, price, instr): print(f"Mock Add Prescription {vid}: {mid}, {qty}, {price}, {instr}"); return 21 # Return dummy ID
-    def remove_prescription_from_visit(vpid): print(f"Mock Remove Prescription {vpid}"); return True
-    def load_visit_data(vid):
-        visit = get_visit_by_id(vid)
-        if not visit: return None
-        patient = get_patient_by_id(visit['patient_id'])
-        services = get_services_for_visit(vid)
-        prescriptions = get_prescriptions_for_visit(vid)
-        return visit, patient, services, prescriptions
-    def get_all_services(active_only=True): return [{'service_id': 1, 'name': 'Cleaning', 'default_price': 50.0}, {'service_id': 2, 'name': 'Filling', 'default_price': 120.0}]
-    def get_all_medications(active_only=True): return [{'medication_id': 101, 'name': 'Painkiller A', 'default_price': 5.0}, {'medication_id': 102, 'name': 'Antibiotic B', 'default_price': 15.0}]
-# --- End Placeholder Functions ---
-
-
-# --- Custom Widgets ---
 class NoScrollSpinBox(QSpinBox):
     """A QSpinBox that ignores wheel events."""
     def wheelEvent(self, event):
-        event.ignore() # Prevent changing value with mouse wheel
+        event.ignore()  # Prevent changing value with mouse wheel
 
 class NoScrollDoubleSpinBox(QDoubleSpinBox):
     """A QDoubleSpinBox that ignores wheel events."""
     def wheelEvent(self, event):
-        event.ignore() # Prevent changing value with mouse wheel
+        event.ignore()  # Prevent changing value with mouse wheel
 
-# --- Main Window Class ---
 class VisitDetailWindow(QWidget):
     """Widget to display and edit visit details with a modern UI/UX."""
     visit_updated = pyqtSignal(int)  # Signal (patient_id) when visit is updated
@@ -68,97 +31,43 @@ class VisitDetailWindow(QWidget):
 
     def __init__(self, visit_id, patient_id=None, parent=None):
         super().__init__(parent)
-        self.visit_id = visit_id
-        self.patient_id = patient_id
-        self.visit_data = None
-        self.patient_data = None
-        self.services = []
-        self.prescriptions = []
-        self.new_services = []
-        self.new_prescriptions = []
-        self.available_services = {}
-        self.available_medications = {}
+        self.model = VisitDetailModel(visit_id, patient_id)
         self.is_editing = False
-
-        if not self._load_initial_data():
-             # Error handled within _load_initial_data
-            # Close the window or disable functionality if data loading fails critically
-            self.setEnabled(False) # Disable interactions if data fails
-            return
 
         self._setup_ui()
         self._apply_styles()
         self._connect_signals()
-        self._update_view_mode() # Set initial state (view mode)
+        self._update_view_mode()  # Set initial state (view mode)
 
         # Set minimum size and window title
-        self.setWindowTitle(f"Visit Details - ID: {self.visit_id}")
-        self.setMinimumSize(950, 750) # Slightly larger for better spacing
-
-    def _load_initial_data(self):
-        """Load all necessary data for the visit."""
-        try:
-            data = load_visit_data(self.visit_id)
-            if not data:
-                QMessageBox.critical(self, "Error", f"Could not load data for visit ID: {self.visit_id}.")
-                return False
-            self.visit_data, self.patient_data, self.services, self.prescriptions = data
-
-            # Ensure patient_id is set, using visit_data if needed
-            if self.patient_id is None and self.patient_data:
-                 self.patient_id = self.patient_data.get('patient_id')
-            elif self.patient_id is None and self.visit_data:
-                 self.patient_id = self.visit_data.get('patient_id')
-
-            if not self.patient_data and self.patient_id: # Try loading patient data if missing
-                self.patient_data = get_patient_by_id(self.patient_id) or {}
-
-            # Load available services and medications
-            svcs = get_all_services(active_only=True) or []
-            self.available_services = {s['name']: {'id': s['service_id'], 'price': s['default_price']} for s in svcs}
-            meds = get_all_medications(active_only=True) or []
-            self.available_medications = {m['name']: {'id': m['medication_id'], 'price': m.get('default_price', 0.0)} for m in meds}
-
-            self.new_services.clear()
-            self.new_prescriptions.clear()
-            return True
-        except Exception as e:
-            QMessageBox.critical(self, "Data Loading Error", f"An error occurred while loading data:\n{e}")
-            return False
+        self.setWindowTitle(f"Visit Details - ID: {visit_id}")
+        self.setMinimumSize(950, 750)  # Slightly larger for better spacing
 
     def _setup_ui(self):
         """Initialize the main UI structure and widgets."""
-        # *** Change: Use main_layout directly for scroll area AND bottom buttons ***
+        # Main layout
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(15) # Adjust spacing if needed
+        self.main_layout.setSpacing(15)  # Adjust spacing if needed
 
-        # --- Scroll Area Setup ---
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setObjectName("MainScrollArea")
-        self.content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self.content_widget)
+        # Content layout
+        self.content_layout = QVBoxLayout()
         self.content_layout.setContentsMargins(10, 10, 10, 10)
         self.content_layout.setSpacing(20)
-        self.scroll_area.setWidget(self.content_widget)
-        # *** Add scroll_area to main_layout ***
-        self.main_layout.addWidget(self.scroll_area) # Add scroll area first
 
-        # --- Create UI Sections (these add to content_layout) ---
+        # Add sections to content layout
         self._setup_patient_info()
         self._setup_visit_info()
         self._setup_services_section()
         self._setup_prescriptions_section()
         self._setup_financial_summary()
-        # *** Action buttons setup is called, but added later ***
         self._setup_action_buttons()
 
-        # --- Add Action Buttons Layout to main_layout (AFTER Scroll Area) ---
-        # self.action_layout is created in _setup_action_buttons()
-        self.main_layout.addLayout(self.action_layout) # Add button layout here
+        # Add content layout to main layout
+        self.main_layout.addLayout(self.content_layout)
+        self.main_layout.addLayout(self.action_layout)  # Add action buttons layout
 
-        # --- Populate Initial Data ---
+        # Populate initial data
         self._populate_fields()
         self._populate_services_table()
         self._populate_prescriptions_table()
@@ -172,8 +81,8 @@ class VisitDetailWindow(QWidget):
         patient_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         patient_layout.setSpacing(10)
 
-        self.patient_name_label = QLabel(self.patient_data.get('name', 'N/A'))
-        self.patient_id_label = QLabel(str(self.patient_data.get('patient_id', 'N/A')))
+        self.patient_name_label = QLabel(self.model.patient_data.get('name', 'N/A'))
+        self.patient_id_label = QLabel(str(self.model.patient_data.get('patient_id', 'N/A')))
 
         patient_layout.addRow(QLabel("<b>Patient Name:</b>"), self.patient_name_label)
         patient_layout.addRow(QLabel("<b>Patient ID:</b>"), self.patient_id_label)
@@ -184,10 +93,10 @@ class VisitDetailWindow(QWidget):
         visit_group = QGroupBox("Visit Information")
         visit_form_layout = QFormLayout(visit_group)
         visit_form_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
-        visit_form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignTop) # Align labels top for QTextEdit
+        visit_form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignTop)  # Align labels top for QTextEdit
         visit_form_layout.setSpacing(10)
 
-        self.visit_details_label = QLabel() # Will be populated later
+        self.visit_details_label = QLabel()  # Will be populated later
         self.visit_date_input = QDateEdit()
         self.visit_date_input.setCalendarPopup(True)
         self.visit_date_input.setDisplayFormat("yyyy-MM-dd")
@@ -212,34 +121,34 @@ class VisitDetailWindow(QWidget):
         services_layout = QVBoxLayout(services_group)
         services_layout.setSpacing(15)
 
-        # --- Add Service Controls (initially hidden) ---
+        # Add Service Controls (initially hidden)
         self.add_service_widget = QWidget()
-        add_service_layout = QGridLayout(self.add_service_widget) # Use GridLayout for better alignment
+        add_service_layout = QGridLayout(self.add_service_widget)  # Use GridLayout for better alignment
         add_service_layout.setSpacing(10)
 
         self.service_combo = QComboBox()
         self.service_combo.setPlaceholderText("Select Service...")
-        self.service_combo.addItems([""] + sorted(self.available_services.keys())) # Add blank item
+        self.service_combo.addItems([""] + sorted(self.model.available_services.keys()))  # Add blank item
         self.service_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.service_tooth_input = QLineEdit()
         self.service_tooth_input.setPlaceholderText("Tooth #")
         self.service_tooth_input.setFixedWidth(80)
 
-        self.service_price_input = NoScrollDoubleSpinBox() # Use custom spinbox
+        self.service_price_input = NoScrollDoubleSpinBox()  # Use custom spinbox
         self.service_price_input.setRange(0.0, 99999.99)
         self.service_price_input.setDecimals(2)
-        self.service_price_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons) # Hide up/down arrows
+        self.service_price_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # Hide up/down arrows
         self.service_price_input.setFixedWidth(100)
         self.service_price_input.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        self.service_notes_input = QLineEdit() # Changed to QLineEdit for brevity unless long notes are common
+        self.service_notes_input = QLineEdit()  # Changed to QLineEdit for brevity unless long notes are common
         self.service_notes_input.setPlaceholderText("Service notes (optional)")
         self.service_notes_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.add_service_button = QPushButton(qta.icon('fa5s.plus-circle', color='white'), " Add Service")
-        self.add_service_button.setObjectName("AddButton") # For specific styling
-        self.add_service_button.setFixedHeight(35) # Consistent height
+        self.add_service_button.setObjectName("AddButton")  # For specific styling
+        self.add_service_button.setFixedHeight(35)  # Consistent height
 
         add_service_layout.addWidget(QLabel("Service:"), 0, 0)
         add_service_layout.addWidget(self.service_combo, 0, 1)
@@ -248,20 +157,19 @@ class VisitDetailWindow(QWidget):
         add_service_layout.addWidget(QLabel("Price:"), 0, 4)
         add_service_layout.addWidget(self.service_price_input, 0, 5)
         add_service_layout.addWidget(QLabel("Notes:"), 1, 0)
-        add_service_layout.addWidget(self.service_notes_input, 1, 1, 1, 5) # Span notes across
-        add_service_layout.addWidget(self.add_service_button, 0, 6, 2, 1, alignment=Qt.AlignmentFlag.AlignVCenter) # Span button vertically
+        add_service_layout.addWidget(self.service_notes_input, 1, 1, 1, 5)  # Span notes across
+        add_service_layout.addWidget(self.add_service_button, 0, 6, 2, 1, alignment=Qt.AlignmentFlag.AlignVCenter)  # Span button vertically
 
         services_layout.addWidget(self.add_service_widget)
-        self.add_service_widget.setVisible(False) # Start hidden
+        self.add_service_widget.setVisible(False)  # Start hidden
 
-        # --- Services Table ---
+        # Services Table
         self.services_table = QTableWidget()
-        self.services_table.setColumnCount(6) # ID (hidden), Service, Tooth #, Price, Notes, Action
+        self.services_table.setColumnCount(6)  # ID (hidden), Service, Tooth #, Price, Notes, Action
         self.services_table.setHorizontalHeaderLabels(["ID", "Service", "Tooth #", "Price", "Notes", "Action"])
-        self._configure_table(self.services_table, [0]) # Hide ID column
+        self._configure_table(self.services_table, [0])  # Hide ID column
         services_layout.addWidget(self.services_table)
         self.content_layout.addWidget(services_group)
-
 
     def _setup_prescriptions_section(self):
         """Create the prescriptions group box, table, and add controls."""
@@ -269,36 +177,36 @@ class VisitDetailWindow(QWidget):
         prescriptions_layout = QVBoxLayout(prescriptions_group)
         prescriptions_layout.setSpacing(15)
 
-        # --- Add Prescription Controls (initially hidden) ---
+        # Add Prescription Controls (initially hidden)
         self.add_prescription_widget = QWidget()
-        add_med_layout = QGridLayout(self.add_prescription_widget) # Use GridLayout
+        add_med_layout = QGridLayout(self.add_prescription_widget)  # Use GridLayout
         add_med_layout.setSpacing(10)
 
         self.med_combo = QComboBox()
         self.med_combo.setPlaceholderText("Select Medication...")
-        self.med_combo.addItems([""] + sorted(self.available_medications.keys())) # Add blank item
+        self.med_combo.addItems([""] + sorted(self.model.available_medications.keys()))  # Add blank item
         self.med_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        self.med_qty_input = NoScrollSpinBox() # Use custom spinbox
+        self.med_qty_input = NoScrollSpinBox()  # Use custom spinbox
         self.med_qty_input.setRange(1, 999)
         self.med_qty_input.setValue(1)
-        self.med_qty_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons) # Hide arrows
+        self.med_qty_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # Hide arrows
         self.med_qty_input.setFixedWidth(70)
         self.med_qty_input.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        self.med_price_input = NoScrollDoubleSpinBox() # Use custom spinbox
+        self.med_price_input = NoScrollDoubleSpinBox()  # Use custom spinbox
         self.med_price_input.setRange(0.0, 9999.99)
         self.med_price_input.setDecimals(2)
-        self.med_price_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons) # Hide arrows
+        self.med_price_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # Hide arrows
         self.med_price_input.setFixedWidth(100)
         self.med_price_input.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        self.med_instr_input = QLineEdit() # Changed to QLineEdit
+        self.med_instr_input = QLineEdit()  # Changed to QLineEdit
         self.med_instr_input.setPlaceholderText("Instructions (optional)")
         self.med_instr_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        self.add_med_button = QPushButton(qta.icon('fa5s.pills', color='white'), " Add Med") # Changed icon
-        self.add_med_button.setObjectName("AddButton") # For styling
+        self.add_med_button = QPushButton(qta.icon('fa5s.pills', color='white'), " Add Med")  # Changed icon
+        self.add_med_button.setObjectName("AddButton")  # For styling
         self.add_med_button.setFixedHeight(35)
 
         add_med_layout.addWidget(QLabel("Medication:"), 0, 0)
@@ -308,17 +216,17 @@ class VisitDetailWindow(QWidget):
         add_med_layout.addWidget(QLabel("Price:"), 0, 4)
         add_med_layout.addWidget(self.med_price_input, 0, 5)
         add_med_layout.addWidget(QLabel("Instructions:"), 1, 0)
-        add_med_layout.addWidget(self.med_instr_input, 1, 1, 1, 5) # Span instructions
-        add_med_layout.addWidget(self.add_med_button, 0, 6, 2, 1, alignment=Qt.AlignmentFlag.AlignVCenter) # Span button
+        add_med_layout.addWidget(self.med_instr_input, 1, 1, 1, 5)  # Span instructions
+        add_med_layout.addWidget(self.add_med_button, 0, 6, 2, 1, alignment=Qt.AlignmentFlag.AlignVCenter)  # Span button
 
         prescriptions_layout.addWidget(self.add_prescription_widget)
-        self.add_prescription_widget.setVisible(False) # Start hidden
+        self.add_prescription_widget.setVisible(False)  # Start hidden
 
-        # --- Prescriptions Table ---
+        # Prescriptions Table
         self.prescriptions_table = QTableWidget()
-        self.prescriptions_table.setColumnCount(6) # ID (hidden), Medication, Qty, Price, Instructions, Action
+        self.prescriptions_table.setColumnCount(6)  # ID (hidden), Medication, Qty, Price, Instructions, Action
         self.prescriptions_table.setHorizontalHeaderLabels(["ID", "Medication", "Qty", "Price", "Instructions", "Action"])
-        self._configure_table(self.prescriptions_table, [0]) # Hide ID column
+        self._configure_table(self.prescriptions_table, [0])  # Hide ID column
         prescriptions_layout.addWidget(self.prescriptions_table)
         self.content_layout.addWidget(prescriptions_group)
 
@@ -327,28 +235,38 @@ class VisitDetailWindow(QWidget):
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
-        table.setMinimumHeight(180) # Adjust as needed
-        table.verticalHeader().setVisible(False) # Hide row numbers
+        table.setMinimumHeight(180)  # Adjust as needed
+        table.verticalHeader().setVisible(False)  # Hide row numbers
 
         header = table.horizontalHeader()
         # Configure resize modes for other columns first
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents) # Default or specific columns
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Default or specific columns
         # Stretch the ones that need it
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # Name column
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch) # Notes/Instructions column
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Name column
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Notes/Instructions column
 
-        # *** FIX: Set a fixed width for the Action column (index 5) ***
+        # Set a fixed width for the Action column (index 5)
         action_column_index = 5
-        action_column_width = 45 # Adjust this width as needed (try 40, 50, etc.)
+        action_column_width = 45  # Adjust this width as needed (try 40, 50, etc.)
         header.setSectionResizeMode(action_column_index, QHeaderView.ResizeMode.Fixed)
         table.setColumnWidth(action_column_index, action_column_width)
-        # *** End Fix ***
 
         # Hide specified columns AFTER setting widths/modes
         for col_index in hidden_columns:
             table.setColumnHidden(col_index, True)
 
-        # header.setStretchLastSection(False) # Usually not needed when setting fixed/stretch explicitly
+        # Set row selection color
+        table.setStyleSheet("""
+            QTableWidget::item:selected {
+                background-color: #3498db; /* Blue selection */
+                color: white;
+            }
+            QTableWidget::item {
+                padding: 8px 10px; /* More padding */
+                border-bottom: 1px solid #e0e0e0; /* Row separator */
+            }
+        """)
+
     def _setup_financial_summary(self):
         """Create the financial summary group box."""
         finance_group = QGroupBox("Financial Summary")
@@ -363,9 +281,9 @@ class VisitDetailWindow(QWidget):
         self.pay_due_input = QLineEdit()
         self.pay_due_input.setPlaceholderText("Enter amount paying now")
         self.pay_due_input.setValidator(QDoubleValidator(0.0, 99999.99, 2))
-        self.pay_due_input.setFixedWidth(180) # Give it a fixed width
+        self.pay_due_input.setFixedWidth(180)  # Give it a fixed width
         self.pay_due_input.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.pay_due_input.setEnabled(False) # Disabled in view mode
+        self.pay_due_input.setEnabled(False)  # Disabled in view mode
 
         finance_layout.addRow(QLabel("<b>Total Amount:</b>"), self.total_amount_label)
         finance_layout.addRow(QLabel("<b>Previously Paid:</b>"), self.paid_amount_label)
@@ -380,39 +298,35 @@ class VisitDetailWindow(QWidget):
 
     def _setup_action_buttons(self):
         """Create the main action buttons (Edit, Save, Close/Cancel)."""
-        # *** Store the layout as a class member ***
+        # Store the layout as a class member
         self.action_layout = QHBoxLayout()
         self.action_layout.setSpacing(15)
-        self.action_layout.addStretch(1) # Push buttons to the right
+        self.action_layout.addStretch(1)  # Push buttons to the right
 
-        # ...(button creation remains the same)...
+        # Action Buttons
         self.edit_button = QPushButton(qta.icon('fa5s.edit', color='#2980b9'), " Edit Visit")
-        # ...etc...
         self.save_button = QPushButton(qta.icon('fa5s.save', color='white'), " Save Changes")
-        # ...etc...
         self.cancel_or_close_button = QPushButton(qta.icon('fa5s.times-circle', color='white'), " Close")
-        # ...etc...
 
         self.action_layout.addWidget(self.edit_button)
         self.action_layout.addWidget(self.save_button)
         self.action_layout.addWidget(self.cancel_or_close_button)
 
-       
     def _apply_styles(self):
         """Apply QSS stylesheet for a modern look."""
         # Color Palette
-        primary_color = "#3498db"    # Blue
-        primary_hover = "#2980b9"    # Darker Blue
+        primary_color = "#3498db"  # Blue
+        primary_hover = "#2980b9"  # Darker Blue
         secondary_color = "#e74c3c"  # Red (for cancel/delete)
         secondary_hover = "#c0392b"  # Darker Red
-        add_color = "#2ecc71"        # Green (for add)
-        add_hover = "#27ae60"        # Darker Green
-        background_color = "#ecf0f1" # Light Gray
-        content_bg = "#ffffff"       # White
-        border_color = "#bdc3c7"     # Gray Border
-        text_color = "#2c3e50"       # Dark Blue/Gray Text
-        label_color = "#34495e"      # Slightly Darker Label Text
-        alt_row_color = "#f8f9f9"    # Very Light Gray for Alt Rows
+        add_color = "#2ecc71"  # Green (for add)
+        add_hover = "#27ae60"  # Darker Green
+        background_color = "#ecf0f1"  # Light Gray
+        content_bg = "#ffffff"  # White
+        border_color = "#bdc3c7"  # Gray Border
+        text_color = "#2c3e50"  # Dark Blue/Gray Text
+        label_color = "#34495e"  # Slightly Darker Label Text
+        alt_row_color = "#f8f9f9"  # Very Light Gray for Alt Rows
 
         self.setStyleSheet(f"""
             QWidget {{
@@ -463,7 +377,6 @@ class VisitDetailWindow(QWidget):
                 font-weight: bold;
             }}
 
-
             QLineEdit, QTextEdit, QComboBox, QDateEdit, QAbstractSpinBox {{
                 border: 1px solid {border_color};
                 border-radius: 4px;
@@ -502,7 +415,6 @@ class VisitDetailWindow(QWidget):
                  width: 12px;
                  height: 12px;
              }}
-
 
             QPushButton {{
                 border-radius: 4px;
@@ -617,7 +529,6 @@ class VisitDetailWindow(QWidget):
 
         """)
 
-
     def _connect_signals(self):
         """Connect widget signals to their respective slots."""
         # Action Buttons
@@ -636,36 +547,53 @@ class VisitDetailWindow(QWidget):
         # Financial Input Update
         self.pay_due_input.textChanged.connect(self._update_financial_summary)
 
+        # Connect table row click event
+        self.services_table.cellClicked.connect(self._handle_table_row_click)
+        self.prescriptions_table.cellClicked.connect(self._handle_table_row_click)
+
+    def _handle_table_row_click(self, row, column):
+        """Handle table row click event to change row color."""
+        table = self.sender()
+        for r in range(table.rowCount()):
+            for c in range(table.columnCount()):
+                item = table.item(r, c)
+                if item:
+                    if r == row:
+                        item.setBackground(QColor('#3498db'))  # Blue color for selected row
+                        item.setForeground(QColor('white'))
+                    else:
+                        item.setBackground(QColor('transparent'))  # Reset other rows
+                        item.setForeground(QColor('black'))
+
     # --- Data Population and Update Methods ---
 
     def _populate_fields(self):
         """Populate the main form fields with loaded visit data."""
-        if not self.visit_data: return
+        if not self.model.visit_data: return
 
         # Visit Info
-        visit_num = self.visit_data.get('visit_number', 'N/A')
-        visit_date_str = self.visit_data.get('visit_date', '')
+        visit_num = self.model.visit_data.get('visit_number', 'N/A')
+        visit_date_str = self.model.visit_data.get('visit_date', '')
         self.visit_details_label.setText(f"Visit No. <b>{visit_num}</b>")
         visit_date = QDate.fromString(visit_date_str, "yyyy-MM-dd")
         self.visit_date_input.setDate(visit_date if visit_date.isValid() else QDate.currentDate())
-        self.visit_notes_input.setPlainText(self.visit_data.get('notes', ''))
-        self.lab_results_input.setPlainText(self.visit_data.get('lab_results', ''))
+        self.visit_notes_input.setPlainText(self.model.visit_data.get('notes', ''))
+        self.lab_results_input.setPlainText(self.model.visit_data.get('lab_results', ''))
 
         # Financials (initial state before edits)
         self._update_financial_summary()
 
-
     def _populate_services_table(self):
         """Populate the services table with existing and new services."""
         self.services_table.setRowCount(0)  # Clear existing rows
-        all_services = self.services + self.new_services
+        all_services = self.model.services + self.model.new_services
         for service in all_services:
             self._add_row_to_table(self.services_table, service, is_service=True)
 
     def _populate_prescriptions_table(self):
         """Populate the prescriptions table with existing and new prescriptions."""
         self.prescriptions_table.setRowCount(0)  # Clear existing rows
-        all_prescriptions = self.prescriptions + self.new_prescriptions
+        all_prescriptions = self.model.prescriptions + self.model.new_prescriptions
         for prescription in all_prescriptions:
             self._add_row_to_table(self.prescriptions_table, prescription, is_service=False)
 
@@ -674,19 +602,19 @@ class VisitDetailWindow(QWidget):
         row_position = table.rowCount()
         table.insertRow(row_position)
 
-        is_new = 'new' in item_data # Check if it's a newly added item not yet saved
+        is_new = 'new' in item_data  # Check if it's a newly added item not yet saved
 
         # Determine unique ID and display data based on type (service/prescription)
         if is_service:
-            item_id_key = 'visit_service_id' if not is_new else 'temp_id' # Use temp_id for new items if needed
-            item_id = item_data.get(item_id_key, item_data.get('service_id')) # Fallback to service_id
+            item_id_key = 'visit_service_id' if not is_new else 'temp_id'  # Use temp_id for new items if needed
+            item_id = item_data.get(item_id_key, item_data.get('service_id'))  # Fallback to service_id
             name = item_data.get('service_name', 'N/A')
             col2_val = str(item_data.get('tooth_number', ''))
             notes = item_data.get('notes', '')
             remove_tooltip = "Remove this service"
-        else: # Prescription
+        else:  # Prescription
             item_id_key = 'visit_prescription_id' if not is_new else 'temp_id'
-            item_id = item_data.get(item_id_key, item_data.get('medication_id')) # Fallback to medication_id
+            item_id = item_data.get(item_id_key, item_data.get('medication_id'))  # Fallback to medication_id
             name = item_data.get('medication_name', 'N/A')
             col2_val = str(item_data.get('quantity', ''))
             notes = item_data.get('instructions', '')
@@ -696,7 +624,7 @@ class VisitDetailWindow(QWidget):
 
         # Create items
         id_item = QTableWidgetItem(str(item_id))
-        id_item.setData(Qt.ItemDataRole.UserRole, is_new) # Store 'is_new' status in the item
+        id_item.setData(Qt.ItemDataRole.UserRole, is_new)  # Store 'is_new' status in the item
         name_item = QTableWidgetItem(name)
         col2_item = QTableWidgetItem(col2_val)
         price_item = QTableWidgetItem(f"{price:.2f}")
@@ -707,27 +635,25 @@ class VisitDetailWindow(QWidget):
         price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # Add items to table
-        table.setItem(row_position, 0, id_item)      # Hidden ID
-        table.setItem(row_position, 1, name_item)    # Service/Medication Name
-        table.setItem(row_position, 2, col2_item)    # Tooth # / Qty
-        table.setItem(row_position, 3, price_item)   # Price
-        table.setItem(row_position, 4, notes_item)   # Notes / Instructions
+        table.setItem(row_position, 0, id_item)  # Hidden ID
+        table.setItem(row_position, 1, name_item)  # Service/Medication Name
+        table.setItem(row_position, 2, col2_item)  # Tooth # / Qty
+        table.setItem(row_position, 3, price_item)  # Price
+        table.setItem(row_position, 4, notes_item)  # Notes / Instructions
 
-        # --- Add Remove Button (Corrected Line) ---
+        # Add Remove Button
         remove_button = QPushButton(
             qta.icon('fa5s.trash-alt', color=self.style().standardPalette().color(QPalette.ColorRole.PlaceholderText)),
             ""  # Add empty text argument
         )
-        # --- End Corrected Line ---
-
         remove_button.setObjectName("RemoveItemButton")
         remove_button.setToolTip(remove_tooltip)
-        remove_button.setFlat(True) # Make it look integrated
+        remove_button.setFlat(True)  # Make it look integrated
         remove_button.setCursor(Qt.CursorShape.PointingHandCursor)
         remove_button.setProperty("row", row_position)
         remove_button.setProperty("is_service", is_service)
         remove_button.clicked.connect(lambda checked, b=remove_button: self.remove_item(b))
-        remove_button.setEnabled(self.is_editing) # Only enabled in edit mode
+        remove_button.setEnabled(self.is_editing)  # Only enabled in edit mode
 
         # Center the button in the cell
         cell_widget = QWidget()
@@ -735,10 +661,7 @@ class VisitDetailWindow(QWidget):
         cell_layout.addWidget(remove_button)
         cell_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cell_layout.setContentsMargins(0, 0, 0, 0)
-        table.setCellWidget(row_position, 5, cell_widget) # Action column
-
-        # Adjust row height if needed, although ResizeToContents should handle it
-        # table.resizeRowToContents(row_position)
+        table.setCellWidget(row_position, 5, cell_widget)  # Action column
 
     def _update_financial_summary(self):
         """Recalculate and update the financial summary labels."""
@@ -749,7 +672,7 @@ class VisitDetailWindow(QWidget):
                 try:
                     total_services += float(price_item.text())
                 except ValueError:
-                    pass # Ignore non-numeric values
+                    pass  # Ignore non-numeric values
 
         total_prescriptions = 0.0
         for row in range(self.prescriptions_table.rowCount()):
@@ -764,24 +687,23 @@ class VisitDetailWindow(QWidget):
         self.total_amount_label.setText(f"<b>{current_total:.2f}</b>")
 
         # Use initial paid amount from loaded data, don't recalculate from label
-        initial_paid = float(self.visit_data.get('paid_amount', 0.0)) if self.visit_data else 0.0
+        initial_paid = float(self.model.visit_data.get('paid_amount', 0.0)) if self.model.visit_data else 0.0
         self.paid_amount_label.setText(f"{initial_paid:.2f}")
 
         initial_due = max(0.0, current_total - initial_paid)
-        self.due_amount_label.setText(f"<font color='red'><b>{initial_due:.2f}</b></font>") # Show initial due in red
+        self.due_amount_label.setText(f"<font color='red'><b>{initial_due:.2f}</b></font>")  # Show initial due in red
 
         # Calculate remaining due based on 'Pay Now' input
         pay_now_text = self.pay_due_input.text().strip()
         pay_now_amount = 0.0
-        if self.is_editing and pay_now_text: # Only consider Pay Now in edit mode
-             try:
-                 pay_now_amount = float(pay_now_text)
-             except ValueError:
-                 pass # Invalid input, treat as 0
+        if self.is_editing and pay_now_text:  # Only consider Pay Now in edit mode
+            try:
+                pay_now_amount = float(pay_now_text)
+            except ValueError:
+                pass  # Invalid input, treat as 0
 
         remaining_due = max(0.0, initial_due - pay_now_amount)
         self.updated_due_label.setText(f"<font color='red'><b>{remaining_due:.2f}</b></font>")
-
 
     # --- Edit Mode and State Management ---
 
@@ -826,20 +748,44 @@ class VisitDetailWindow(QWidget):
 
         # Set focus appropriately
         if editing:
-             self.visit_date_input.setFocus()
+            self.visit_date_input.setFocus()
         else:
-             self.edit_button.setFocus()
-
+            self.edit_button.setFocus()
 
     def _set_table_buttons_enabled(self, table, enabled):
         """Enable or disable all 'Remove' buttons in a table."""
         for row in range(table.rowCount()):
-            cell_widget = table.cellWidget(row, 5) # Action column
+            cell_widget = table.cellWidget(row, 5)  # Action column
             if cell_widget:
-                 # Find the button within the cell widget's layout
-                 button = cell_widget.layout().itemAt(0).widget()
-                 if isinstance(button, QPushButton):
-                     button.setEnabled(enabled)
+                # Find the button within the cell widget's layout
+                button = cell_widget.layout().itemAt(0).widget()
+                if isinstance(button, QPushButton):
+                    button.setEnabled(enabled)
+
+    def cancel_edit(self):
+        """Cancel editing mode, discarding changes."""
+        # Optional: Ask for confirmation if changes were made
+        if self.model.new_services or self.model.new_prescriptions or self.pay_due_input.text():
+            reply = QMessageBox.question(self, "Cancel Edit",
+                                         "Discard unsaved changes and exit edit mode?",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                         QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.No:
+                return
+
+        # Reload original data to revert fields
+        self.model._load_initial_data()  # Reloads original data
+        self._populate_fields()  # Repopulate form fields
+        self._populate_services_table()  # Repopulate tables (clears new items)
+        self._populate_prescriptions_table()
+
+        self.is_editing = False  # Set state back to viewing
+        self._update_view_mode()  # Update UI to reflect viewing state
+
+    def close_view(self):
+        """Close the window and emit the closed signal."""
+        self.closed.emit()  # Emit the closed signal
+        self.close()  # Close the current window
 
     def _handle_cancel_or_close(self):
         """Handles the action of the Cancel/Close button based on mode."""
@@ -847,53 +793,25 @@ class VisitDetailWindow(QWidget):
             self.cancel_edit()
         else:
             self.close_view()
-
-    def cancel_edit(self):
-        """Cancel editing mode, discarding changes."""
-        # Optional: Ask for confirmation if changes were made
-        if self.new_services or self.new_prescriptions or self.pay_due_input.text():
-             reply = QMessageBox.question(self, "Cancel Edit",
-                                         "Discard unsaved changes and exit edit mode?",
-                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                         QMessageBox.StandardButton.No)
-             if reply == QMessageBox.StandardButton.No:
-                 return
-
-        # Reload original data to revert fields
-        self._load_initial_data() # Reloads original data
-        self._populate_fields() # Repopulate form fields
-        self._populate_services_table() # Repopulate tables (clears new items)
-        self._populate_prescriptions_table()
-
-        self.is_editing = False # Set state back to viewing
-        self._update_view_mode() # Update UI to reflect viewing state
-
-
-    def close_view(self):
-        """Close the window and emit the closed signal."""
-        # Add confirmation if in edit mode and changes exist? (Handled by cancel_edit now)
-        self.closed.emit()
-        self.parentWidget().show() # Assuming the parent is the patient detail view
-        self.close()
+    
 
     # --- Item Adding/Removing Logic ---
 
     def update_service_price(self):
         """Update the price input when a service is selected."""
         service_name = self.service_combo.currentText()
-        if service_name and service_name in self.available_services:
-            self.service_price_input.setValue(self.available_services[service_name]['price'])
-        elif not service_name: # Clear price if blank option selected
-             self.service_price_input.setValue(0.0)
-
+        if service_name and service_name in self.model.available_services:
+            self.service_price_input.setValue(self.model.available_services[service_name]['price'])
+        elif not service_name:  # Clear price if blank option selected
+            self.service_price_input.setValue(0.0)
 
     def update_med_price(self):
         """Update the price input when a medication is selected."""
         med_name = self.med_combo.currentText()
-        if med_name and med_name in self.available_medications:
-            self.med_price_input.setValue(self.available_medications[med_name]['price'])
-        elif not med_name: # Clear price if blank option selected
-             self.med_price_input.setValue(0.0)
+        if med_name and med_name in self.model.available_medications:
+            self.med_price_input.setValue(self.model.available_medications[med_name]['price'])
+        elif not med_name:  # Clear price if blank option selected
+            self.med_price_input.setValue(0.0)
 
     def add_service_item(self):
         """Add a new service item to the temporary list and table."""
@@ -902,41 +820,39 @@ class VisitDetailWindow(QWidget):
             QMessageBox.warning(self, "Selection Error", "Please select a service.")
             return
 
-        service_id = self.available_services[service_name]['id']
+        service_id = self.model.available_services[service_name]['id']
         tooth_str = self.service_tooth_input.text().strip()
         # Allow non-numeric tooth "numbers" (e.g., "ULQ", "Mandible") if needed
         tooth_info = tooth_str if tooth_str else None
         price = self.service_price_input.value()
-        notes = self.service_notes_input.text().strip() # Using QLineEdit now
+        notes = self.service_notes_input.text().strip()  # Using QLineEdit now
 
         # Basic validation (e.g., price > 0?)
         if price <= 0:
-             reply = QMessageBox.question(self, "Confirm Price", "The service price is zero. Add anyway?",
-                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                           QMessageBox.StandardButton.No)
-             if reply == QMessageBox.StandardButton.No: return
-
+            reply = QMessageBox.question(self, "Confirm Price", "The service price is zero. Add anyway?",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                         QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.No: return
 
         item_data = {
-            'service_id': service_id, # Needed for saving
+            'service_id': service_id,  # Needed for saving
             'service_name': service_name,
-            'tooth_number': tooth_info, # Renamed for clarity
+            'tooth_number': tooth_info,  # Renamed for clarity
             'price_charged': price,
             'notes': notes,
-            'new': True, # Mark as unsaved
-            'temp_id': f"new_s_{len(self.new_services)}" # Temporary unique ID for removal before saving
-         }
-        self.new_services.append(item_data)
+            'new': True,  # Mark as unsaved
+            'temp_id': f"new_s_{len(self.model.new_services)}"  # Temporary unique ID for removal before saving
+        }
+        self.model.new_services.append(item_data)
         self._add_row_to_table(self.services_table, item_data, is_service=True)
         self._update_financial_summary()
 
         # Clear input fields for next entry
-        self.service_combo.setCurrentIndex(0) # Reset combo to blank
+        self.service_combo.setCurrentIndex(0)  # Reset combo to blank
         self.service_tooth_input.clear()
         self.service_notes_input.clear()
         self.service_price_input.setValue(0.0)
-        self.service_combo.setFocus() # Focus back on the first input
-
+        self.service_combo.setFocus()  # Focus back on the first input
 
     def add_prescription_item(self):
         """Add a new prescription item to the temporary list and table."""
@@ -945,34 +861,34 @@ class VisitDetailWindow(QWidget):
             QMessageBox.warning(self, "Selection Error", "Please select a medication.")
             return
 
-        med_id = self.available_medications[med_name]['id']
+        med_id = self.model.available_medications[med_name]['id']
         quantity = self.med_qty_input.value()
-        price = self.med_price_input.value() # Price per unit or total? Assume total here. Adjust if needed.
-        instructions = self.med_instr_input.text().strip() # Using QLineEdit now
+        price = self.med_price_input.value()  # Price per unit or total? Assume total here. Adjust if needed.
+        instructions = self.med_instr_input.text().strip()  # Using QLineEdit now
 
         # Basic validation
         if quantity <= 0:
             QMessageBox.warning(self, "Input Error", "Quantity must be greater than zero.")
             return
         if price < 0:
-             QMessageBox.warning(self,"Input Error", "Price cannot be negative.")
-             return
+            QMessageBox.warning(self, "Input Error", "Price cannot be negative.")
+            return
 
         item_data = {
-            'medication_id': med_id, # Needed for saving
+            'medication_id': med_id,  # Needed for saving
             'medication_name': med_name,
             'quantity': quantity,
-            'price_charged': price, # Total price for the quantity
+            'price_charged': price,  # Total price for the quantity
             'instructions': instructions,
-            'new': True, # Mark as unsaved
-            'temp_id': f"new_p_{len(self.new_prescriptions)}" # Temporary unique ID
+            'new': True,  # Mark as unsaved
+            'temp_id': f"new_p_{len(self.model.new_prescriptions)}"  # Temporary unique ID
         }
-        self.new_prescriptions.append(item_data)
+        self.model.new_prescriptions.append(item_data)
         self._add_row_to_table(self.prescriptions_table, item_data, is_service=False)
         self._update_financial_summary()
 
         # Clear input fields
-        self.med_combo.setCurrentIndex(0) # Reset combo to blank
+        self.med_combo.setCurrentIndex(0)  # Reset combo to blank
         self.med_qty_input.setValue(1)
         self.med_instr_input.clear()
         self.med_price_input.setValue(0.0)
@@ -982,16 +898,16 @@ class VisitDetailWindow(QWidget):
         """Remove an item (service or prescription) from the table and list."""
         row_to_remove = button.property("row")
         is_service = button.property("is_service")
-        if row_to_remove is None: return # Safety check
+        if row_to_remove is None: return  # Safety check
 
         table = self.services_table if is_service else self.prescriptions_table
-        id_item = table.item(row_to_remove, 0) # ID is in column 0
-        if not id_item: return # Safety check
+        id_item = table.item(row_to_remove, 0)  # ID is in column 0
+        if not id_item: return  # Safety check
 
         item_id_str = id_item.text()
-        is_new = id_item.data(Qt.ItemDataRole.UserRole) # Retrieve 'is_new' status
+        is_new = id_item.data(Qt.ItemDataRole.UserRole)  # Retrieve 'is_new' status
 
-        item_name = table.item(row_to_remove, 1).text() # Get name for confirmation
+        item_name = table.item(row_to_remove, 1).text()  # Get name for confirmation
 
         confirm_msg = f"Remove '{item_name}'?"
         reply = QMessageBox.question(self, "Confirm Removal", confirm_msg,
@@ -1002,52 +918,51 @@ class VisitDetailWindow(QWidget):
             if is_new:
                 # Remove from the temporary 'new' list based on temp_id or unique data
                 if is_service:
-                    self.new_services = [s for s in self.new_services if s.get('temp_id') != item_id_str]
+                    self.model.new_services = [s for s in self.model.new_services if s.get('temp_id') != item_id_str]
                 else:
-                    self.new_prescriptions = [p for p in self.new_prescriptions if p.get('temp_id') != item_id_str]
+                    self.model.new_prescriptions = [p for p in self.model.new_prescriptions if p.get('temp_id') != item_id_str]
                 # No database action needed yet
-                table.removeRow(row_to_remove) # Remove directly
+                table.removeRow(row_to_remove)  # Remove directly
                 self._update_row_properties(table, row_to_remove)
                 self._update_financial_summary()
 
-            else: # Item exists in the database
+            else:  # Item exists in the database
                 # Call database function to remove
                 try:
-                     item_id = int(item_id_str)
-                     success = False
-                     if is_service:
-                         # Find the original service in self.services to mark for removal or remove directly?
-                         # Current approach: Remove immediately via DB call.
-                         success = remove_service_from_visit(item_id)
-                         if success: # Also remove from the local 'original' list
-                              self.services = [s for s in self.services if s.get('visit_service_id') != item_id]
-                     else:
-                         success = remove_prescription_from_visit(item_id)
-                         if success: # Also remove from the local 'original' list
-                              self.prescriptions = [p for p in self.prescriptions if p.get('visit_prescription_id') != item_id]
+                    item_id = int(item_id_str)
+                    success = False
+                    if is_service:
+                        # Find the original service in self.services to mark for removal or remove directly?
+                        # Current approach: Remove immediately via DB call.
+                        success = self.model.remove_service_from_visit(item_id)
+                        if success:  # Also remove from the local 'original' list
+                            self.model.services = [s for s in self.model.services if s.get('visit_service_id') != item_id]
+                    else:
+                        success = self.model.remove_prescription_from_visit(item_id)
+                        if success:  # Also remove from the local 'original' list
+                            self.model.prescriptions = [p for p in self.model.prescriptions if p.get('visit_prescription_id') != item_id]
 
-                     if success:
-                         table.removeRow(row_to_remove)
-                         self._update_row_properties(table, row_to_remove)
-                         self._update_financial_summary()
-                         # No need to emit visit_updated here, only on full save
-                     else:
-                         QMessageBox.critical(self, "Database Error", f"Failed to remove the item (ID: {item_id}) from the database.")
+                    if success:
+                        table.removeRow(row_to_remove)
+                        self._update_row_properties(table, row_to_remove)
+                        self._update_financial_summary()
+                        # No need to emit visit_updated here, only on full save
+                    else:
+                        QMessageBox.critical(self, "Database Error", f"Failed to remove the item (ID: {item_id}) from the database.")
                 except ValueError:
-                     QMessageBox.critical(self, "Error", f"Invalid item ID found: {item_id_str}")
+                    QMessageBox.critical(self, "Error", f"Invalid item ID found: {item_id_str}")
                 except Exception as e:
-                     QMessageBox.critical(self, "Database Error", f"An error occurred during removal:\n{e}")
-
+                    QMessageBox.critical(self, "Database Error", f"An error occurred during removal:\n{e}")
 
     def _update_row_properties(self, table, removed_row_index):
         """Update the 'row' property of buttons in subsequent rows after a removal."""
         for row in range(removed_row_index, table.rowCount()):
-            cell_widget = table.cellWidget(row, 5) # Action column
+            cell_widget = table.cellWidget(row, 5)  # Action column
             if cell_widget:
-                 button = cell_widget.layout().itemAt(0).widget()
-                 if isinstance(button, QPushButton):
-                    button.setProperty("row", row) # Update the row index stored in the button
-
+                # Find the button within the cell widget's layout
+                button = cell_widget.layout().itemAt(0).widget()
+                if isinstance(button, QPushButton):
+                    button.setProperty("row", row)  # Update the row index stored in the button
 
     # --- Saving Logic ---
 
@@ -1066,7 +981,7 @@ class VisitDetailWindow(QWidget):
         lab_results = self.lab_results_input.toPlainText().strip()
 
         # Calculate final paid amount
-        initial_paid = float(self.visit_data.get('paid_amount', 0.0))
+        initial_paid = float(self.model.visit_data.get('paid_amount', 0.0))
         pay_now_text = self.pay_due_input.text().strip()
         pay_now_amount = 0.0
         if pay_now_text:
@@ -1085,100 +1000,96 @@ class VisitDetailWindow(QWidget):
 
         # Update Visit Details (Date, Notes, Lab Results)
         try:
-            if not update_visit_details(self.visit_id, visit_date_str, notes, lab_results):
-                 db_errors.append("Failed to update visit details.")
+            if not self.model.update_visit_details(visit_date_str, notes, lab_results):
+                db_errors.append("Failed to update visit details.")
         except Exception as e:
             db_errors.append(f"Error updating visit details: {e}")
 
         # Add New Services
         added_service_ids = []
-        for service in self.new_services:
+        for service in self.model.new_services:
             try:
                 # Make sure all necessary keys exist
                 sid = service['service_id']
-                tooth = service.get('tooth_number') # Use .get for optional fields
+                tooth = service.get('tooth_number')  # Use .get for optional fields
                 price = service['price_charged']
                 s_notes = service.get('notes', '')
 
-                new_visit_service_id = add_service_to_visit(self.visit_id, sid, tooth, price, s_notes)
+                new_visit_service_id = self.model.add_service_to_visit(sid, tooth, price, s_notes)
                 if new_visit_service_id:
-                     service['visit_service_id'] = new_visit_service_id # Store the real ID
-                     service.pop('new', None) # Remove 'new' marker
-                     service.pop('temp_id', None)
-                     added_service_ids.append(service) # Keep track of successfully added ones
+                    service['visit_service_id'] = new_visit_service_id  # Store the real ID
+                    service.pop('new', None)  # Remove 'new' marker
+                    service.pop('temp_id', None)
+                    added_service_ids.append(service)  # Keep track of successfully added ones
                 else:
                     db_errors.append(f"Failed to add service: {service.get('service_name', 'Unknown')}")
             except Exception as e:
-                 db_errors.append(f"Error adding service {service.get('service_name', 'Unknown')}: {e}")
+                db_errors.append(f"Error adding service {service.get('service_name', 'Unknown')}: {e}")
 
         # Add New Prescriptions
         added_prescription_ids = []
-        for prescription in self.new_prescriptions:
+        for prescription in self.model.new_prescriptions:
             try:
-                 mid = prescription['medication_id']
-                 qty = prescription['quantity']
-                 price = prescription['price_charged']
-                 instr = prescription.get('instructions', '')
+                mid = prescription['medication_id']
+                qty = prescription['quantity']
+                price = prescription['price_charged']
+                instr = prescription.get('instructions', '')
 
-                 new_visit_presc_id = add_prescription_to_visit(self.visit_id, mid, qty, price, instr)
-                 if new_visit_presc_id:
-                     prescription['visit_prescription_id'] = new_visit_presc_id
-                     prescription.pop('new', None)
-                     prescription.pop('temp_id', None)
-                     added_prescription_ids.append(prescription)
-                 else:
-                     db_errors.append(f"Failed to add prescription: {prescription.get('medication_name', 'Unknown')}")
+                new_visit_presc_id = self.model.add_prescription_to_visit(mid, qty, price, instr)
+                if new_visit_presc_id:
+                    prescription['visit_prescription_id'] = new_visit_presc_id
+                    prescription.pop('new', None)
+                    prescription.pop('temp_id', None)
+                    added_prescription_ids.append(prescription)
+                else:
+                    db_errors.append(f"Failed to add prescription: {prescription.get('medication_name', 'Unknown')}")
             except Exception as e:
-                 db_errors.append(f"Error adding prescription {prescription.get('medication_name', 'Unknown')}: {e}")
+                db_errors.append(f"Error adding prescription {prescription.get('medication_name', 'Unknown')}: {e}")
 
         # Update Payment (only if payment was made or details changed)
-        # The update_visit_payment function likely recalculates total/due based on current services/prescriptions
         try:
-            if not update_visit_payment(self.visit_id, final_paid_amount):
+            if not self.model.update_visit_payment(final_paid_amount):
                 db_errors.append("Failed to update visit payment information.")
             else:
-                 # Update local data if payment update was successful
-                 if self.visit_data: self.visit_data['paid_amount'] = final_paid_amount
+                # Update local data if payment update was successful
+                if self.model.visit_data: self.model.visit_data['paid_amount'] = final_paid_amount
 
         except Exception as e:
             db_errors.append(f"Error updating payment: {e}")
 
-
         # --- Post-Save Actions ---
         if not db_errors:
             # Success: Merge new items into main lists, clear new lists
-            self.services.extend(added_service_ids)
-            self.prescriptions.extend(added_prescription_ids)
-            self.new_services.clear()
-            self.new_prescriptions.clear()
+            self.model.services.extend(added_service_ids)
+            self.model.prescriptions.extend(added_prescription_ids)
+            self.model.new_services.clear()
+            self.model.new_prescriptions.clear()
 
-            QMessageBox.information(self, "Success", f"Visit ID {self.visit_id} updated successfully.")
-            self.visit_updated.emit(self.patient_id) # Notify parent/main window
+            QMessageBox.information(self, "Success", f"Visit ID {self.model.visit_id} updated successfully.")
+            self.visit_updated.emit(self.model.patient_id)  # Notify parent/main window
             self.is_editing = False
             # Reload data to ensure consistency, especially calculated fields like due_amount
-            self._load_initial_data()
+            self.model._load_initial_data()
             self._populate_fields()
             self._populate_services_table()
             self._populate_prescriptions_table()
-            self._update_view_mode() # Switch back to view mode
+            self._update_view_mode()  # Switch back to view mode
         else:
             # Handle Errors: Show accumulated errors
-             # Rollback? Complex. For now, just report errors. User might need to fix and save again.
-             # Keep items in new_services/new_prescriptions lists if they failed to add.
-             # Remove successfully added items from the 'new' lists
-             self.new_services = [s for s in self.new_services if 'visit_service_id' not in s]
-             self.new_prescriptions = [p for p in self.new_prescriptions if 'visit_prescription_id' not in p]
-             # Refresh tables to reflect partial success/failures
-             self._populate_services_table()
-             self._populate_prescriptions_table()
-             # Update summary based on potentially partial changes
-             self._update_financial_summary()
+            # Rollback? Complex. For now, just report errors. User might need to fix and save again.
+            # Keep items in new_services/new_prescriptions lists if they failed to add.
+            # Remove successfully added items from the 'new' lists
+            self.model.new_services = [s for s in self.model.new_services if 'visit_service_id' not in s]
+            self.model.new_prescriptions = [p for p in self.model.new_prescriptions if 'visit_prescription_id' not in p]
+            # Refresh tables to reflect partial success/failures
+            self._populate_services_table()
+            self._populate_prescriptions_table()
+            # Update summary based on potentially partial changes
+            self._update_financial_summary()
 
-             error_message = "Errors occurred during saving:\n\n" + "\n".join(f"- {e}" for e in db_errors)
-             QMessageBox.critical(self, "Save Error", error_message)
-             # Stay in edit mode for user to correct
-
-
+            error_message = "Errors occurred during saving:\n\n" + "\n".join(f"- {e}" for e in db_errors)
+            QMessageBox.critical(self, "Save Error", error_message)
+            # Stay in edit mode for user to correct
 # --- Main Execution / Test ---
 if __name__ == '__main__':
 
@@ -1191,62 +1102,60 @@ if __name__ == '__main__':
         print("Attempting Real Database Setup for Test...")
         try:
             from database.schema import initialize_database
-            from database.data_manager import add_patient, add_visit, add_service, add_medication # Keep specific adds
+            from database.data_manager import add_patient, add_visit, add_service, add_medication  # Keep specific adds
             initialize_database()
             # Add minimal test data if it doesn't exist
             if not get_patient_by_id(4):
                 print("Adding test patient 4...")
                 add_patient("Test VisitDetail", "Tester", "Other", 31, "1 Detail St", "555-DETAIL", "Needs details")
             if not get_service_by_id(1):
-                 print("Adding test service 1...")
-                 add_service("Cleaning", "Teeth Cleaning", 50.0)
+                print("Adding test service 1...")
+                add_service("Cleaning", "Teeth Cleaning", 50.0)
             if not get_service_by_id(2):
-                 print("Adding test service 2...")
-                 add_service("Filling", "Composite Filling", 120.0)
+                print("Adding test service 2...")
+                add_service("Filling", "Composite Filling", 120.0)
             # Add medication if function exists and medication not present
             try:
-                 if not get_medication_by_id(101): # Assuming get_medication_by_id exists
-                      print("Adding test medication 101...")
-                      add_medication("Painkiller A", "Generic Pain Relief", 5.0)
-            except NameError: pass # Ignore if get_medication_by_id doesn't exist
+                if not get_medication_by_id(101):  # Assuming get_medication_by_id exists
+                    print("Adding test medication 101...")
+                    add_medication("Painkiller A", "Generic Pain Relief", 5.0)
+            except NameError: pass  # Ignore if get_medication_by_id doesn't exist
             except Exception as e_med: print(f"Error checking/adding medication: {e_med}")
-
 
             if not get_visit_by_id(9):
                 print("Adding test visit 9...")
                 visit_id_test = add_visit(4, "2024-04-01", "Initial consultation", "X-rays taken")
                 if visit_id_test:
-                     print(f"Test visit created with ID: {visit_id_test}")
-                     # Add a service to the newly created visit
-                     add_service_to_visit(visit_id_test, 1, None, 50.0, "Standard cleaning")
-                     TEST_VISIT_ID = visit_id_test
+                    print(f"Test visit created with ID: {visit_id_test}")
+                    # Add a service to the newly created visit
+                    add_service_to_visit(visit_id_test, 1, None, 50.0, "Standard cleaning")
+                    TEST_VISIT_ID = visit_id_test
                 else:
-                     print("Failed to add test visit.")
-                     sys.exit(1)
+                    print("Failed to add test visit.")
+                    sys.exit(1)
             else:
-                 TEST_VISIT_ID = 9 # Use existing visit 9
-                 # Ensure visit 9 has at least one service for testing display
-                 if not get_services_for_visit(9):
-                      add_service_to_visit(9, 1, None, 50.0, "Standard cleaning - Added for test")
-
+                TEST_VISIT_ID = 9  # Use existing visit 9
+                # Ensure visit 9 has at least one service for testing display
+                if not get_services_for_visit(9):
+                    add_service_to_visit(9, 1, None, 50.0, "Standard cleaning - Added for test")
 
         except ImportError:
-             print("Database schema/manager not fully available for test setup.")
-             sys.exit(1)
+            print("Database schema/manager not fully available for test setup.")
+            sys.exit(1)
         except Exception as e:
             print(f"Error setting up DB for test: {e}")
             # Don't exit if DB exists but setup fails, maybe data is already there
-            if 'TEST_VISIT_ID' not in locals(): TEST_VISIT_ID = 9 # Fallback
+            if 'TEST_VISIT_ID' not in locals(): TEST_VISIT_ID = 9  # Fallback
 
-    else: # Should not happen based on initial check, but as fallback
-         TEST_VISIT_ID = 9
+    else:  # Should not happen based on initial check, but as fallback
+        TEST_VISIT_ID = 9
 
     # --- Run Application ---
     app = QApplication(sys.argv)
-    # app.setStyle('Fusion') # Fusion style is clean, but stylesheet overrides most
+    # app.setStyle('Fusion')  # Fusion style is clean, but stylesheet overrides most
 
     # Ensure a patient ID is available for the test visit
-    test_patient_id = 4 # Assuming visit 9 belongs to patient 4
+    test_patient_id = 4  # Assuming visit 9 belongs to patient 4
 
     print(f"Attempting to load VisitDetailWindow for Visit ID: {TEST_VISIT_ID}, Patient ID: {test_patient_id}")
     window = VisitDetailWindow(visit_id=TEST_VISIT_ID, patient_id=test_patient_id)
