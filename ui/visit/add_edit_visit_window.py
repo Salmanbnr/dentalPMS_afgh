@@ -135,16 +135,22 @@ class AddEditVisitWindow(QWidget):
             color: #7f8c8d;
         }
         #SaveButton {
-            background-color: #3498db;
+            background-color: #3498db;  /* Blue color for save button */
         }
         #SaveButton:hover {
-            background-color: #2980b9;
+            background-color: #2980b9;  /* Darker blue on hover */
         }
         #CancelButton {
-            background-color: #e74c3c;
+            background-color: #e74c3c;  /* Red color for cancel button */
         }
         #CancelButton:hover {
-            background-color: #c0392b;
+            background-color: #c0392b;  /* Darker red on hover */
+        }
+        #AddButton {
+            background-color: #2ecc71;  /* Green color for add buttons */
+        }
+        #AddButton:hover {
+            background-color: #27ae60;  /* Darker green on hover */
         }
         QTableWidget {
             border: 1px solid #bdc3c7;
@@ -191,7 +197,7 @@ class AddEditVisitWindow(QWidget):
             background: #95a5a6;
         }
         """
-
+    
     def load_initial_data(self):
         """Load patient, visit, available services and medications data."""
         data = load_initial_data(self.patient_id, self.is_editing, self.visit_id)
@@ -631,7 +637,7 @@ class AddEditVisitWindow(QWidget):
 
         if self.is_editing:
             if save_visit_details(self.visit_id, visit_date, notes, lab_results, paid_amount):
-                QMessageBox.information(self, "Success", "Visit updated successfully.")
+                self.show_message("Success", "Visit updated successfully.")
                 self.visit_saved.emit(self.patient_id)
                 self.clear_form()
             else:
@@ -639,12 +645,40 @@ class AddEditVisitWindow(QWidget):
         else:
             new_visit_id = add_new_visit(self.patient_id, visit_date, notes, lab_results, self.services_table, self.prescriptions_table, paid_amount)
             if new_visit_id:
-                QMessageBox.information(self, "Success", "New visit added successfully.")
+                self.show_message("Success", "New visit added successfully.")
                 self.visit_saved.emit(self.patient_id)
                 self.clear_form()
             else:
                 QMessageBox.warning(self, "Partial Success", "New visit created, but some items may have failed.")
 
+    def show_message(self, title, message):
+        """Show a message box with custom styled OK button."""
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+
+        # Style the OK button
+        ok_button = msg_box.button(QMessageBox.StandardButton.Ok)
+        ok_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;  /* Green color for OK button */
+                color: white;
+                border-radius: 4px;
+                padding: 8px 18px;
+                font-size: 10pt;
+                font-weight: bold;
+                min-height: 28px;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;  /* Darker green on hover */
+            }
+            QPushButton:pressed {
+                background-color: #239b56;  /* Even darker green on press */
+            }
+        """)
+
+        msg_box.exec()
     def cancel(self):
         """Emit cancelled signal on cancel."""
         self.cancelled.emit()
