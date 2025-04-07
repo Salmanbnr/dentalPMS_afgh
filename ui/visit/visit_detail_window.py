@@ -315,241 +315,309 @@ class VisitDetailWindow(QWidget):
         self.content_layout.addWidget(finance_group)
 
     def _setup_action_buttons(self):
-        """Create the main action buttons (Edit, Save, Close/Cancel)."""
+        """Create the main action buttons (Print, Edit, Save, Close/Cancel)."""
         # Store the layout as a class member
         self.action_layout = QHBoxLayout()
         self.action_layout.setSpacing(15)
         self.action_layout.addStretch(1)  # Push buttons to the right
 
-        # Action Buttons
+        # --- Add Print Button ---
+        self.print_button = QPushButton(qta.icon('fa5s.print', color='#555'), " Print Report") # Use a suitable icon color
+        self.print_button.setObjectName("PrintButton") # Optional: for specific styling
+        self.print_button.setToolTip("Generate and save a PDF report for this visit")
+        # --- End Add Print Button ---
+
+        # Existing Action Buttons
         self.edit_button = QPushButton(qta.icon('fa5s.edit', color='#2980b9'), " Edit Visit")
         self.save_button = QPushButton(qta.icon('fa5s.save', color='white'), " Save Changes")
         self.cancel_or_close_button = QPushButton(qta.icon('fa5s.times-circle', color='white'), " Close")
+
+        # --- Add Print Button to layout ---
+        self.action_layout.addWidget(self.print_button)
+        # --- End Add Print Button ---
 
         self.action_layout.addWidget(self.edit_button)
         self.action_layout.addWidget(self.save_button)
         self.action_layout.addWidget(self.cancel_or_close_button)
 
     def _apply_styles(self):
-        """Apply QSS stylesheet for a modern look."""
+        """Apply comprehensive CSS-like styling to the widget."""
         # Color Palette
-        primary_color = "#3498db"  # Blue
-        primary_hover = "#2980b9"  # Darker Blue
-        secondary_color = "#e74c3c"  # Red (for cancel/delete)
-        secondary_hover = "#c0392b"  # Darker Red
-        add_color = "#2ecc71"  # Green (for add)
-        add_hover = "#27ae60"  # Darker Green
-        background_color = "#ecf0f1"  # Light Gray
-        content_bg = "#ffffff"  # White
-        border_color = "#bdc3c7"  # Gray Border
-        text_color = "#2c3e50"  # Dark Blue/Gray Text
-        label_color = "#34495e"  # Slightly Darker Label Text
-        alt_row_color = "#f8f9f9"  # Very Light Gray for Alt Rows
+        primary_color = "#3498db"  # Bright Blue (used for headers, edit button)
+        secondary_color = "#2ecc71" # Green (used for save button)
+        danger_color = "#e74c3c"   # Red (used for cancel/close button)
+        info_color = "#7f8c8d"     # Gray (used for print button)
+        background_color = "#ecf0f1" # Light Grayish Blue
+        content_bg_color = "#ffffff"   # White
+        text_color = "#2c3e50"       # Dark Gray/Blue
+        label_color = "#555555"      # Medium Gray for labels
+        border_color = "#bdc3c7"     # Light Gray border
+        hover_primary = "#2980b9"
+        hover_secondary = "#27ae60"
+        hover_danger = "#c0392b"
+        hover_info = "#95a5a6"
+
+        # Font Sizes (adjust as needed)
+        base_font_size = "10pt"
+        large_font_size = "12pt"
+        header_font_size = "14pt"
 
         self.setStyleSheet(f"""
-            QWidget {{
-                font-family: 'Segoe UI', Arial, sans-serif; /* Modern font stack */
-                font-size: 10pt; /* Slightly smaller base font */
+            VisitDetailWindow {{
+                background-color: {background_color};
+                font-family: Segoe UI, Arial, sans-serif; /* Modern font stack */
+                font-size: {base_font_size};
                 color: {text_color};
             }}
-            VisitDetailWindow, #MainScrollArea {{
-                background-color: {background_color};
-            }}
-            #content_widget {{
-                 background-color: {background_color};
-            }}
-
             QGroupBox {{
-                background-color: {content_bg};
+                background-color: {content_bg_color};
                 border: 1px solid {border_color};
-                border-radius: 8px;
-                margin-top: 1ex; /* Space for title */
-                padding: 15px;
-                padding-top: 25px; /* More space below title */
-                 /* Subtle shadow effect */
-                /* box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); */ /* Requires custom painting or framework */
+                border-radius: 8px; /* Rounded corners */
+                margin-top: 1em; /* Space for title */
+                padding: 15px; /* Internal padding */
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                left: 15px;
                 padding: 5px 10px;
                 background-color: {primary_color};
                 color: white;
+                border-radius: 5px; /* Slightly rounded title */
                 font-weight: bold;
-                font-size: 11pt;
-                border-radius: 4px;
+                font-size: {large_font_size};
+                margin-left: 10px;
             }}
-
             QLabel {{
-                padding: 2px;
-                font-weight: normal; /* Default normal */
                 color: {label_color};
-                 /* Let bold tags in text control boldness */
+                font-size: {base_font_size};
+                padding-bottom: 2px; /* Space below labels */
             }}
-             /* Target specific labels if needed, e.g., QFormLayout QLabel */
-            QFormLayout QLabel {{
-                 padding-top: 5px; /* Align better with inputs */
-            }}
-            QLabel[font-weight="bold"] {{ /* Style bold labels if set programmatically */
+            /* Style for the main Patient Name label */
+            QLabel#PatientNameLabel {{
                 font-weight: bold;
+                font-size: {header_font_size};
+                color: {primary_color};
+                padding-bottom: 10px;
             }}
-
-            QLineEdit, QTextEdit, QComboBox, QDateEdit, QAbstractSpinBox {{
+            /* Style for the Patient ID label (using the name from the error hint) */
+            QLabel#PatientIDLabel {{
+                font-weight: normal; /* Or bold if desired */
+                font-size: {base_font_size}; /* Or large_font_size */
+                color: {label_color}; /* Or primary_color */
+                /* Add other specific styles if needed */
+            }}
+             QLabel#FinancialTotalLabel, QLabel#FinancialPaidLabel, QLabel#FinancialDueLabel {{
+                font-weight: bold;
+                font-size: {large_font_size};
+                color: {text_color}; /* Darker text for financial labels */
+            }}
+            QLabel#FinancialValueTotal, QLabel#FinancialValuePaid {{
+                 font-size: {large_font_size};
+                 color: {text_color};
+             }}
+            QLabel#FinancialValueDue {{
+                font-weight: bold;
+                font-size: {large_font_size};
+                color: {danger_color}; /* Red color for due amount */
+            }}
+            QLineEdit, QDateEdit, QComboBox, QTextEdit, QSpinBox, QDoubleSpinBox {{
+                background-color: {content_bg_color};
                 border: 1px solid {border_color};
                 border-radius: 4px;
-                padding: 6px 8px; /* Adjust padding */
-                background-color: {content_bg};
-                min-height: 28px; /* Ensure consistent height */
+                padding: 6px;
+                font-size: {base_font_size};
+                color: {text_color};
             }}
-            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QDateEdit:focus, QAbstractSpinBox:focus {{
-                border: 1px solid {primary_color}; /* Highlight on focus */
-                /* box-shadow: 0 0 3px {primary_color}; */ /* Optional focus shadow */
+            QLineEdit:focus, QDateEdit:focus, QComboBox:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
+                border: 1px solid {primary_color}; /* Highlight focus */
+                background-color: #fdfefe; /* Slightly different background on focus */
             }}
-            QLineEdit:read-only, QTextEdit:read-only, QAbstractSpinBox:read-only {{
-                background-color: #fdfdfe; /* Slightly off-white */
-                color: #7f8c8d; /* Grayer text */
-                border: 1px solid #e0e0e0;
-            }}
-             QDateEdit {{
-                 min-width: 120px;
+             QLineEdit:read-only, QTextEdit:read-only, QDateEdit:read-only,
+             QSpinBox:read-only, QDoubleSpinBox:read-only {{
+                 background-color: #f0f0f0; /* Gray out read-only fields slightly */
+                 color: #777;
+                 border: 1px solid #d0d0d0;
              }}
-             QDateEdit::drop-down {{
-                 subcontrol-origin: padding;
-                 subcontrol-position: top right;
-                 width: 20px;
-                 border-left: 1px solid {border_color};
-             }}
-             QComboBox::drop-down {{
-                 subcontrol-origin: padding;
-                 subcontrol-position: top right;
-                 width: 20px;
-                 border-left: 1px solid {border_color};
-                 border-top-right-radius: 3px;
-                 border-bottom-right-radius: 3px;
-             }}
-             QComboBox::down-arrow {{
-                 image: url(PLACEHOLDER_FOR_DOWN_ARROW_ICON); /* Use qta or resource file */
-                 width: 12px;
-                 height: 12px;
-             }}
-
-            QPushButton {{
-                border-radius: 4px;
-                padding: 8px 18px; /* Adjust padding */
-                font-size: 10pt;
-                font-weight: bold;
-                border: none; /* Flat design */
-                min-height: 28px;
-                color: white; /* Default text color */
+            QComboBox::drop-down {{
+                border: none;
             }}
-            QPushButton:hover {{
-                /* background-color set per button type */
-                opacity: 0.9; /* Slight fade */
+            QComboBox::down-arrow {{
+                /* image: url(icons/down_arrow.png); */ /* Ensure you have an icon or use qta */
+                width: 12px;
+                height: 12px;
+                padding-right: 5px;
             }}
-            QPushButton:pressed {{
-                /* background-color set per button type */
-                opacity: 0.7;
-            }}
-            QPushButton:disabled {{
-                 background-color: #bdc3c7; /* Disabled gray */
-                 color: #7f8c8d;
-            }}
-
-             /* Specific Button Styles */
-            #SaveButton {{ background-color: {primary_color}; }}
-            #SaveButton:hover {{ background-color: {primary_hover}; }}
-            #AddButton {{ background-color: {add_color}; }}
-            #AddButton:hover {{ background-color: {add_hover}; }}
-            #CancelButton {{ background-color: {secondary_color}; }}
-            #CancelButton:hover {{ background-color: {secondary_hover}; }}
-            #EditButton {{ background-color: #f39c12; color: white; }} /* Orange for Edit */
-            #EditButton:hover {{ background-color: #e67e22; }}
-
-             /* Table Styles */
             QTableWidget {{
+                background-color: {content_bg_color};
                 border: 1px solid {border_color};
-                border-radius: 6px;
-                background-color: {content_bg};
-                gridline-color: #e0e0e0; /* Lighter grid lines */
-                selection-background-color: {primary_color}; /* Blue selection */
+                border-radius: 4px;
+                gridline-color: {border_color};
+                font-size: {base_font_size};
+                selection-background-color: {primary_color}; /* Color when cell/row selected */
                 selection-color: white;
             }}
-            QTableWidget::item {{
-                padding: 8px 10px; /* More padding */
-                border-bottom: 1px solid #e0e0e0; /* Row separator */
-            }}
-            QTableWidget::item:selected {{
-                background-color: {primary_hover}; /* Darker blue on selection */
-                color: white;
-            }}
-             QTableWidget QLineEdit {{ /* Style line edits within table if editable */
-                 border: none;
-                 padding: 2px;
-             }}
-
             QHeaderView::section {{
-                background-color: #eaeaed; /* Light gray header */
-                color: {label_color};
-                padding: 8px;
-                border: none;
-                border-bottom: 1px solid {border_color};
+                background-color: {primary_color};
+                color: white;
+                padding: 5px;
+                border: none; /* Remove default borders */
+                border-bottom: 1px solid {border_color}; /* Add bottom border only */
                 font-weight: bold;
-                font-size: 10pt;
+                font-size: {base_font_size};
             }}
             QHeaderView {{
-                 border: none; /* Remove header border itself */
+                border: none; /* Remove header frame */
+            }}
+            QTableWidget::item {{
+                padding: 5px;
+            }}
+            QTableWidget QLineEdit, QTableWidget QComboBox, QTableWidget QSpinBox, QTableWidget QDoubleSpinBox {{
+                 border-radius: 0px; /* Remove radius for table cells */
+                 border: none; /* Typically remove borders inside tables unless editing */
+            }}
+            /* Style SpinBox buttons */
+            QSpinBox::up-button, QDoubleSpinBox::up-button {{
+                 subcontrol-origin: border;
+                 subcontrol-position: top right;
+                 width: 16px;
+                 /* image: url(icons/up_arrow.png); */ /* Use icons or leave default */
+                 border-left: 1px solid {border_color};
+                 border-bottom: 1px solid {border_color};
+                 border-top-right-radius: 4px;
+            }}
+            QSpinBox::down-button, QDoubleSpinBox::down-button {{
+                 subcontrol-origin: border;
+                 subcontrol-position: bottom right;
+                 width: 16px;
+                 /* image: url(icons/down_arrow.png); */
+                 border-left: 1px solid {border_color};
+                 border-top: 1px solid {border_color};
+                 border-bottom-right-radius: 4px;
+            }}
+             QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+             QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
+                 background-color: #e0e0e0;
+             }}
+
+            /* --- Action Button Styles --- */
+            QPushButton {{
+                padding: 8px 15px;
+                border-radius: 5px;
+                font-size: {base_font_size};
+                font-weight: bold;
+                border: none; /* Remove default border */
+                min-width: 80px; /* Ensure minimum button width */
+            }}
+            /* Print Button */
+            #PrintButton {{
+                background-color: {info_color};
+                color: white;
+            }}
+            #PrintButton:hover {{
+                background-color: {hover_info};
+            }}
+            /* Edit Button */
+            #EditButton {{ /* Assuming you give the edit button this objectName */
+                 background-color: {primary_color};
+                 color: white;
+            }}
+            #EditButton:hover {{
+                 background-color: {hover_primary};
+            }}
+            /* Save Button */
+            #SaveButton {{ /* Assuming you give the save button this objectName */
+                background-color: {secondary_color};
+                color: white;
+            }}
+            #SaveButton:hover {{
+                background-color: {hover_secondary};
+            }}
+             /* Cancel/Close Button */
+            #CancelCloseButton {{ /* Assuming you give the cancel/close button this objectName */
+                background-color: {danger_color};
+                color: white;
+            }}
+            #CancelCloseButton:hover {{
+                background-color: {hover_danger};
+            }}
+            /* Add Item Buttons */
+            #AddServiceButton, #AddMedButton {{ /* Give Add buttons these objectNames */
+                background-color: #e0e0e0; /* Lighter gray for add buttons */
+                color: #333;
+                font-weight: normal;
+                padding: 5px 10px;
+                min-width: 60px;
+                border: 1px solid #ccc;
+            }}
+            #AddServiceButton:hover, #AddMedButton:hover {{
+                background-color: #d0d0d0;
             }}
 
-            QTableWidget[alternatingRowColors="true"]::item:alternate {{
-                background-color: {alt_row_color};
-            }}
-
-             /* Remove button in tables */
-            #RemoveItemButton {{
-                 background-color: transparent;
-                 border: none;
-                 padding: 2px;
-                 qproperty-iconSize: 16px 16px; /* Control icon size */
-            }}
-             #RemoveItemButton:hover {{
-                 background-color: #f5c6cb; /* Light red background on hover */
+             /* Disable button style */
+             QPushButton:disabled {{
+                 background-color: #bdc3c7; /* Gray out disabled buttons */
+                 color: #7f8c8d;
              }}
-             #RemoveItemButton:pressed {{
-                 background-color: #f194a1;
+             QLineEdit:disabled, QTextEdit:disabled, QDateEdit:disabled,
+             QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {{
+                 background-color: #ecf0f1; /* Similar to window background when disabled */
+                 color: #95a5a6;
+                 border: 1px solid #dcdcdc;
              }}
-
-             /* Scrollbar Styling */
-             QScrollArea {{ border: none; }}
-             QScrollBar:vertical {{
-                 border: 1px solid {border_color};
-                 background: {content_bg};
-                 width: 12px; /* Wider scrollbar */
-                 margin: 0px 0px 0px 0px;
-                 border-radius: 6px;
-             }}
-             QScrollBar::handle:vertical {{
-                 background: #bdc3c7; /* Gray handle */
-                 min-height: 25px;
-                 border-radius: 6px;
-             }}
-             QScrollBar::handle:vertical:hover {{
-                 background: #95a5a6; /* Darker gray on hover */
-             }}
-             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                 height: 0px; /* Hide arrows */
-                 background: none;
-             }}
-             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
-                 background: none;
-             }}
-             /* Repeat for horizontal if needed */
 
         """)
+        # --- Set Object Names for Styling ---
+        # Make sure you set these object names when creating the widgets
+        self.patient_name_label.setObjectName("PatientNameLabel")
+
+        # *** Correction based on Traceback ***
+        # The original code had 'self.visit_id_label'. The error suggests it doesn't exist,
+        # but 'self.patient_id_label' might.
+        # If you have a label specifically for the VISIT ID, find its actual variable name
+        # (e.g., self.the_visit_id_label) and uncomment/modify the line below.
+        # self.your_actual_visit_id_label_variable.setObjectName("VisitIDLabel") # Adjust this line!
+
+        # Setting object name for patient_id_label based on error hint
+        try:
+            if hasattr(self, 'patient_id_label'): # Check if it exists before setting
+                 self.patient_id_label.setObjectName("PatientIDLabel")
+            else:
+                 print("Warning: 'patient_id_label' not found during style application.")
+        except Exception as e:
+            print(f"Error setting object name for patient_id_label: {e}")
+
+
+        # Action Buttons
+        self.print_button.setObjectName("PrintButton")
+        self.edit_button.setObjectName("EditButton")
+        self.save_button.setObjectName("SaveButton")
+        self.cancel_or_close_button.setObjectName("CancelCloseButton")
+
+        # Add Item Buttons
+        self.add_service_button.setObjectName("AddServiceButton")
+        self.add_med_button.setObjectName("AddMedButton")
+
+        # Financial Labels (If you have separate value labels)
+        # Ensure these labels exist with these names in your __init__ or _setup_ui
+        try:
+            self.total_label.setObjectName("FinancialTotalLabel")
+            self.paid_label.setObjectName("FinancialPaidLabel")
+            self.due_label.setObjectName("FinancialDueLabel")
+            self.total_value_label.setObjectName("FinancialValueTotal")
+            self.paid_value_label.setObjectName("FinancialValuePaid")
+            self.due_value_label.setObjectName("FinancialValueDue")
+        except AttributeError as e:
+             print(f"Warning: Financial label not found during style application: {e}. Check widget names.")
+    
+
 
     def _connect_signals(self):
         """Connect widget signals to their respective slots."""
-        # Action Buttons
+        # --- Connect Print Button ---
+        self.print_button.clicked.connect(self._generate_visit_pdf)
+        # --- End Connect Print Button ---
+
+        # Existing Action Buttons
         self.edit_button.clicked.connect(self.toggle_edit_mode)
         self.save_button.clicked.connect(self.save_changes)
         self.cancel_or_close_button.clicked.connect(self._handle_cancel_or_close)
@@ -814,6 +882,59 @@ class VisitDetailWindow(QWidget):
             self.cancel_edit()
         else:
             self.close_view()
+
+    # --- PDF Generation ---
+
+    def _generate_visit_pdf(self):
+        """Generates a PDF report for the current visit."""
+        # Assuming your PDF generation logic is in pdf/visit_pdf.py
+        # and you have a function generate_visit_pdf(visit_data, patient_data, services, prescriptions)
+        try:
+            from pdf.visit_pdf import generate_visit_pdf # Ensure this import works
+
+            # Gather all necessary data
+            visit_data = self.model.visit_data
+            patient_data = self.model.patient_data
+            # Combine existing and newly added items (if in edit mode, might want to save first or print current state)
+            # For printing, typically you print the *saved* state.
+            # If you want to print the current state *including unsaved items*, adjust data gathering:
+            # current_services = self.model.services + self.model.new_services
+            # current_prescriptions = self.model.prescriptions + self.model.new_prescriptions
+            
+            # Using only saved data for this example:
+            services = self.model.services
+            prescriptions = self.model.prescriptions
+
+            if not visit_data or not patient_data:
+                QMessageBox.warning(self, "Data Error", "Cannot generate PDF. Visit or patient data is missing.")
+                return
+
+            # Suggest a filename (optional, can be handled in generate_visit_pdf)
+            suggested_filename = f"Visit_{visit_data.get('visit_id', 'N_A')}_Patient_{patient_data.get('patient_id', 'N_A')}.pdf"
+
+            # Call the PDF generation function
+            pdf_path = generate_visit_pdf(visit_data, patient_data, services, prescriptions, suggested_filename)
+
+            if pdf_path:
+                # Ask user if they want to open the PDF (optional)
+                reply = QMessageBox.information(self, "PDF Generated",
+                                                f"PDF report saved successfully:\n{pdf_path}\n\nDo you want to open it?",
+                                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                                QMessageBox.StandardButton.Yes)
+                if reply == QMessageBox.StandardButton.Yes:
+                    import os
+                    import webbrowser
+                    try:
+                        # Use webbrowser for cross-platform opening
+                        webbrowser.open(f"file:///{os.path.abspath(pdf_path)}")
+                    except Exception as e:
+                        QMessageBox.critical(self, "Open Error", f"Could not open PDF file.\nError: {e}")
+            # Error handling within generate_visit_pdf should show messages
+
+        except ImportError:
+             QMessageBox.critical(self, "Error", "Could not find the PDF generation module (pdf/visit_pdf.py).")
+        except Exception as e:
+            QMessageBox.critical(self, "PDF Generation Failed", f"An unexpected error occurred during PDF generation:\n{e}")
 
     # --- Item Adding/Removing Logic ---
 
