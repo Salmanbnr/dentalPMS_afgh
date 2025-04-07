@@ -293,27 +293,36 @@ class VisitDetailWindow(QWidget):
         finance_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         finance_layout.setSpacing(10)
 
-        self.total_amount_label = QLabel("0.00")
-        self.paid_amount_label = QLabel("0.00")
-        self.due_amount_label = QLabel("0.00")
+        # --- Assign descriptive labels to instance variables ---
+        self.total_desc_label = QLabel("<b>Total Amount:</b>")
+        self.paid_desc_label = QLabel("<b>Previously Paid:</b>")
+        self.due_desc_label = QLabel("<b>Amount Due:</b>")
+        self.pay_now_desc_label = QLabel("<b>Pay Now:</b>")
+        self.remaining_due_desc_label = QLabel("<b>Remaining Due:</b>")
+        # --- End assignment ---
+
+        # Value labels (already instance variables)
+        self.total_amount_label = QLabel("0.00") # Displays the value
+        self.paid_amount_label = QLabel("0.00")  # Displays the value
+        self.due_amount_label = QLabel("0.00")   # Displays the value
+        self.updated_due_label = QLabel("0.00") # Displays the value
+
+        # Input field (already instance variable)
         self.pay_due_input = QLineEdit()
         self.pay_due_input.setPlaceholderText("Enter amount paying now")
         self.pay_due_input.setValidator(QDoubleValidator(0.0, 99999.99, 2))
-        self.pay_due_input.setFixedWidth(180)  # Give it a fixed width
+        self.pay_due_input.setFixedWidth(180)
         self.pay_due_input.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.pay_due_input.setEnabled(False)  # Disabled in view mode
+        self.pay_due_input.setEnabled(False) # Disabled in view mode
 
-        finance_layout.addRow(QLabel("<b>Total Amount:</b>"), self.total_amount_label)
-        finance_layout.addRow(QLabel("<b>Previously Paid:</b>"), self.paid_amount_label)
-        finance_layout.addRow(QLabel("<b>Amount Due:</b>"), self.due_amount_label)
-        finance_layout.addRow(QLabel("<b>Pay Now:</b>"), self.pay_due_input)
-
-        # Add a label to show the *updated* amount due after Pay Now entry
-        self.updated_due_label = QLabel("0.00")
-        finance_layout.addRow(QLabel("<b>Remaining Due:</b>"), self.updated_due_label)
+        # Add rows using the instance variables
+        finance_layout.addRow(self.total_desc_label, self.total_amount_label)
+        finance_layout.addRow(self.paid_desc_label, self.paid_amount_label)
+        finance_layout.addRow(self.due_desc_label, self.due_amount_label)
+        finance_layout.addRow(self.pay_now_desc_label, self.pay_due_input)
+        finance_layout.addRow(self.remaining_due_desc_label, self.updated_due_label)
 
         self.content_layout.addWidget(finance_group)
-
     def _setup_action_buttons(self):
         """Create the main action buttons (Print, Edit, Save, Close/Cancel)."""
         # Store the layout as a class member
@@ -342,250 +351,66 @@ class VisitDetailWindow(QWidget):
 
     def _apply_styles(self):
         """Apply comprehensive CSS-like styling to the widget."""
-        # Color Palette
-        primary_color = "#3498db"  # Bright Blue (used for headers, edit button)
-        secondary_color = "#2ecc71" # Green (used for save button)
-        danger_color = "#e74c3c"   # Red (used for cancel/close button)
-        info_color = "#7f8c8d"     # Gray (used for print button)
-        background_color = "#ecf0f1" # Light Grayish Blue
-        content_bg_color = "#ffffff"   # White
-        text_color = "#2c3e50"       # Dark Gray/Blue
-        label_color = "#555555"      # Medium Gray for labels
-        border_color = "#bdc3c7"     # Light Gray border
-        hover_primary = "#2980b9"
-        hover_secondary = "#27ae60"
-        hover_danger = "#c0392b"
-        hover_info = "#95a5a6"
-
-        # Font Sizes (adjust as needed)
-        base_font_size = "10pt"
-        large_font_size = "12pt"
-        header_font_size = "14pt"
+        # ... (Keep color definitions and the main stylesheet string) ...
+        primary_color = "#3498db"; secondary_color = "#2ecc71"; danger_color = "#e74c3c"; info_color = "#7f8c8d"; background_color = "#ecf0f1"; content_bg_color = "#ffffff"; text_color = "#2c3e50"; label_color = "#555555"; border_color = "#bdc3c7"; hover_primary = "#2980b9"; hover_secondary = "#27ae60"; hover_danger = "#c0392b"; hover_info = "#95a5a6"
+        base_font_size = "10pt"; large_font_size = "12pt"; header_font_size = "14pt"
 
         self.setStyleSheet(f"""
-            VisitDetailWindow {{
-                background-color: {background_color};
-                font-family: Segoe UI, Arial, sans-serif; /* Modern font stack */
-                font-size: {base_font_size};
-                color: {text_color};
-            }}
-            QGroupBox {{
-                background-color: {content_bg_color};
-                border: 1px solid {border_color};
-                border-radius: 8px; /* Rounded corners */
-                margin-top: 1em; /* Space for title */
-                padding: 15px; /* Internal padding */
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 5px 10px;
-                background-color: {primary_color};
-                color: white;
-                border-radius: 5px; /* Slightly rounded title */
-                font-weight: bold;
-                font-size: {large_font_size};
-                margin-left: 10px;
-            }}
-            QLabel {{
-                color: {label_color};
-                font-size: {base_font_size};
-                padding-bottom: 2px; /* Space below labels */
-            }}
-            /* Style for the main Patient Name label */
-            QLabel#PatientNameLabel {{
-                font-weight: bold;
-                font-size: {header_font_size};
-                color: {primary_color};
-                padding-bottom: 10px;
-            }}
-            /* Style for the Patient ID label (using the name from the error hint) */
-            QLabel#PatientIDLabel {{
-                font-weight: normal; /* Or bold if desired */
-                font-size: {base_font_size}; /* Or large_font_size */
-                color: {label_color}; /* Or primary_color */
-                /* Add other specific styles if needed */
-            }}
-             QLabel#FinancialTotalLabel, QLabel#FinancialPaidLabel, QLabel#FinancialDueLabel {{
-                font-weight: bold;
-                font-size: {large_font_size};
-                color: {text_color}; /* Darker text for financial labels */
+            VisitDetailWindow {{ background-color: {background_color}; font-family: Segoe UI, Arial, sans-serif; font-size: {base_font_size}; color: {text_color}; }}
+            QGroupBox {{ background-color: {content_bg_color}; border: 1px solid {border_color}; border-radius: 8px; margin-top: 1em; padding: 15px; }}
+            QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; padding: 5px 10px; background-color: {primary_color}; color: white; border-radius: 5px; font-weight: bold; font-size: {large_font_size}; margin-left: 10px; }}
+            QLabel {{ color: {label_color}; font-size: {base_font_size}; padding-bottom: 2px; }}
+            QLabel#PatientNameLabel {{ font-weight: bold; font-size: {header_font_size}; color: {primary_color}; padding-bottom: 10px; }}
+            QLabel#PatientIDLabel {{ font-weight: normal; font-size: {base_font_size}; color: {label_color}; }}
+
+            /* --- Updated Financial Label Styles --- */
+            QLabel#FinancialDescTotal, QLabel#FinancialDescPaid, QLabel#FinancialDescDue, QLabel#FinancialDescPayNow, QLabel#FinancialDescRemaining {{
+                font-weight: bold; /* Keep descriptive labels bold */
+                color: {label_color}; /* Use standard label color */
+                font-size: {base_font_size}; /* Standard size */
             }}
             QLabel#FinancialValueTotal, QLabel#FinancialValuePaid {{
-                 font-size: {large_font_size};
-                 color: {text_color};
-             }}
-            QLabel#FinancialValueDue {{
+                font-size: {large_font_size};
+                color: {text_color};
+                font-weight: bold; /* Make values stand out */
+            }}
+            QLabel#FinancialValueDue, QLabel#FinancialValueRemaining {{
                 font-weight: bold;
                 font-size: {large_font_size};
-                color: {danger_color}; /* Red color for due amount */
+                color: {danger_color}; /* Red color for due/remaining due values */
             }}
-            QLineEdit, QDateEdit, QComboBox, QTextEdit, QSpinBox, QDoubleSpinBox {{
-                background-color: {content_bg_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                padding: 6px;
-                font-size: {base_font_size};
-                color: {text_color};
-            }}
-            QLineEdit:focus, QDateEdit:focus, QComboBox:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
-                border: 1px solid {primary_color}; /* Highlight focus */
-                background-color: #fdfefe; /* Slightly different background on focus */
-            }}
-             QLineEdit:read-only, QTextEdit:read-only, QDateEdit:read-only,
-             QSpinBox:read-only, QDoubleSpinBox:read-only {{
-                 background-color: #f0f0f0; /* Gray out read-only fields slightly */
-                 color: #777;
-                 border: 1px solid #d0d0d0;
-             }}
-            QComboBox::drop-down {{
-                border: none;
-            }}
-            QComboBox::down-arrow {{
-                /* image: url(icons/down_arrow.png); */ /* Ensure you have an icon or use qta */
-                width: 12px;
-                height: 12px;
-                padding-right: 5px;
-            }}
-            QTableWidget {{
-                background-color: {content_bg_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                gridline-color: {border_color};
-                font-size: {base_font_size};
-                selection-background-color: {primary_color}; /* Color when cell/row selected */
-                selection-color: white;
-            }}
-            QHeaderView::section {{
-                background-color: {primary_color};
-                color: white;
-                padding: 5px;
-                border: none; /* Remove default borders */
-                border-bottom: 1px solid {border_color}; /* Add bottom border only */
-                font-weight: bold;
-                font-size: {base_font_size};
-            }}
-            QHeaderView {{
-                border: none; /* Remove header frame */
-            }}
-            QTableWidget::item {{
-                padding: 5px;
-            }}
-            QTableWidget QLineEdit, QTableWidget QComboBox, QTableWidget QSpinBox, QTableWidget QDoubleSpinBox {{
-                 border-radius: 0px; /* Remove radius for table cells */
-                 border: none; /* Typically remove borders inside tables unless editing */
-            }}
-            /* Style SpinBox buttons */
-            QSpinBox::up-button, QDoubleSpinBox::up-button {{
-                 subcontrol-origin: border;
-                 subcontrol-position: top right;
-                 width: 16px;
-                 /* image: url(icons/up_arrow.png); */ /* Use icons or leave default */
-                 border-left: 1px solid {border_color};
-                 border-bottom: 1px solid {border_color};
-                 border-top-right-radius: 4px;
-            }}
-            QSpinBox::down-button, QDoubleSpinBox::down-button {{
-                 subcontrol-origin: border;
-                 subcontrol-position: bottom right;
-                 width: 16px;
-                 /* image: url(icons/down_arrow.png); */
-                 border-left: 1px solid {border_color};
-                 border-top: 1px solid {border_color};
-                 border-bottom-right-radius: 4px;
-            }}
-             QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
-             QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
-                 background-color: #e0e0e0;
-             }}
+            /* --- End Financial Label Styles --- */
 
-            /* --- Action Button Styles --- */
-            QPushButton {{
-                padding: 8px 15px;
-                border-radius: 5px;
-                font-size: {base_font_size};
-                font-weight: bold;
-                border: none; /* Remove default border */
-                min-width: 80px; /* Ensure minimum button width */
-            }}
-            /* Print Button */
-            #PrintButton {{
-                background-color: {info_color};
-                color: white;
-            }}
-            #PrintButton:hover {{
-                background-color: {hover_info};
-            }}
-            /* Edit Button */
-            #EditButton {{ /* Assuming you give the edit button this objectName */
-                 background-color: {primary_color};
-                 color: white;
-            }}
-            #EditButton:hover {{
-                 background-color: {hover_primary};
-            }}
-            /* Save Button */
-            #SaveButton {{ /* Assuming you give the save button this objectName */
-                background-color: {secondary_color};
-                color: white;
-            }}
-            #SaveButton:hover {{
-                background-color: {hover_secondary};
-            }}
-             /* Cancel/Close Button */
-            #CancelCloseButton {{ /* Assuming you give the cancel/close button this objectName */
-                background-color: {danger_color};
-                color: white;
-            }}
-            #CancelCloseButton:hover {{
-                background-color: {hover_danger};
-            }}
-            /* Add Item Buttons */
-            #AddServiceButton, #AddMedButton {{ /* Give Add buttons these objectNames */
-                background-color: #e0e0e0; /* Lighter gray for add buttons */
-                color: #333;
-                font-weight: normal;
-                padding: 5px 10px;
-                min-width: 60px;
-                border: 1px solid #ccc;
-            }}
-            #AddServiceButton:hover, #AddMedButton:hover {{
-                background-color: #d0d0d0;
-            }}
+            QLineEdit, QDateEdit, QComboBox, QTextEdit, QSpinBox, QDoubleSpinBox {{ background-color: {content_bg_color}; border: 1px solid {border_color}; border-radius: 4px; padding: 6px; font-size: {base_font_size}; color: {text_color}; }}
+            QLineEdit:focus, QDateEdit:focus, QComboBox:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{ border: 1px solid {primary_color}; background-color: #fdfefe; }}
+            QLineEdit:read-only, QTextEdit:read-only, QDateEdit:read-only, QSpinBox:read-only, QDoubleSpinBox:read-only {{ background-color: #f0f0f0; color: #777; border: 1px solid #d0d0d0; }}
+            QLineEdit:disabled, QTextEdit:disabled, QDateEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {{ background-color: #ecf0f1; color: #95a5a6; border: 1px solid #dcdcdc; }}
+            QComboBox::drop-down {{ border: none; }}
+            QComboBox::down-arrow {{ width: 12px; height: 12px; padding-right: 5px; }}
+            QTableWidget {{ background-color: {content_bg_color}; border: 1px solid {border_color}; border-radius: 4px; gridline-color: {border_color}; font-size: {base_font_size}; selection-background-color: {primary_color}; selection-color: white; }}
+            QHeaderView::section {{ background-color: {primary_color}; color: white; padding: 5px; border: none; border-bottom: 1px solid {border_color}; font-weight: bold; font-size: {base_font_size}; }}
+            QHeaderView {{ border: none; }}
+            QTableWidget::item {{ padding: 5px; }}
+            QTableWidget::item:selected {{ background-color: {primary_color}; color: white; }} /* Ensure selected item style is present */
 
-             /* Disable button style */
-             QPushButton:disabled {{
-                 background-color: #bdc3c7; /* Gray out disabled buttons */
-                 color: #7f8c8d;
-             }}
-             QLineEdit:disabled, QTextEdit:disabled, QDateEdit:disabled,
-             QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {{
-                 background-color: #ecf0f1; /* Similar to window background when disabled */
-                 color: #95a5a6;
-                 border: 1px solid #dcdcdc;
-             }}
-
+            /* Action Button Styles */
+            QPushButton {{ padding: 8px 15px; border-radius: 5px; font-size: {base_font_size}; font-weight: bold; border: none; min-width: 80px; }}
+            #PrintButton {{ background-color: {info_color}; color: white; }}
+            #PrintButton:hover {{ background-color: {hover_info}; }}
+            #EditButton {{ background-color: {primary_color}; color: white; }}
+            #EditButton:hover {{ background-color: {hover_primary}; }}
+            #SaveButton {{ background-color: {secondary_color}; color: white; }}
+            #SaveButton:hover {{ background-color: {hover_secondary}; }}
+            #CancelCloseButton {{ background-color: {danger_color}; color: white; }}
+            #CancelCloseButton:hover {{ background-color: {hover_danger}; }}
+            #AddServiceButton, #AddMedButton {{ background-color: #e0e0e0; color: #333; font-weight: normal; padding: 5px 10px; min-width: 60px; border: 1px solid #ccc; }}
+            #AddServiceButton:hover, #AddMedButton:hover {{ background-color: #d0d0d0; }}
+            QPushButton:disabled {{ background-color: #bdc3c7; color: #7f8c8d; }}
         """)
+
         # --- Set Object Names for Styling ---
-        # Make sure you set these object names when creating the widgets
         self.patient_name_label.setObjectName("PatientNameLabel")
-
-        # *** Correction based on Traceback ***
-        # The original code had 'self.visit_id_label'. The error suggests it doesn't exist,
-        # but 'self.patient_id_label' might.
-        # If you have a label specifically for the VISIT ID, find its actual variable name
-        # (e.g., self.the_visit_id_label) and uncomment/modify the line below.
-        # self.your_actual_visit_id_label_variable.setObjectName("VisitIDLabel") # Adjust this line!
-
-        # Setting object name for patient_id_label based on error hint
-        try:
-            if hasattr(self, 'patient_id_label'): # Check if it exists before setting
-                 self.patient_id_label.setObjectName("PatientIDLabel")
-            else:
-                 print("Warning: 'patient_id_label' not found during style application.")
-        except Exception as e:
-            print(f"Error setting object name for patient_id_label: {e}")
-
+        if hasattr(self, 'patient_id_label'): self.patient_id_label.setObjectName("PatientIDLabel") # Check existence
 
         # Action Buttons
         self.print_button.setObjectName("PrintButton")
@@ -597,19 +422,26 @@ class VisitDetailWindow(QWidget):
         self.add_service_button.setObjectName("AddServiceButton")
         self.add_med_button.setObjectName("AddMedButton")
 
-        # Financial Labels (If you have separate value labels)
-        # Ensure these labels exist with these names in your __init__ or _setup_ui
+        # --- Updated Financial Labels ---
+        # Set object names for BOTH descriptive labels AND value labels
         try:
-            self.total_label.setObjectName("FinancialTotalLabel")
-            self.paid_label.setObjectName("FinancialPaidLabel")
-            self.due_label.setObjectName("FinancialDueLabel")
-            self.total_value_label.setObjectName("FinancialValueTotal")
-            self.paid_value_label.setObjectName("FinancialValuePaid")
-            self.due_value_label.setObjectName("FinancialValueDue")
-        except AttributeError as e:
-             print(f"Warning: Financial label not found during style application: {e}. Check widget names.")
-    
+            # Descriptive Labels
+            self.total_desc_label.setObjectName("FinancialDescTotal")
+            self.paid_desc_label.setObjectName("FinancialDescPaid")
+            self.due_desc_label.setObjectName("FinancialDescDue")
+            self.pay_now_desc_label.setObjectName("FinancialDescPayNow") # Added
+            self.remaining_due_desc_label.setObjectName("FinancialDescRemaining") # Added
 
+            # Value Labels
+            self.total_amount_label.setObjectName("FinancialValueTotal")
+            self.paid_amount_label.setObjectName("FinancialValuePaid")
+            self.due_amount_label.setObjectName("FinancialValueDue")
+            self.updated_due_label.setObjectName("FinancialValueRemaining") # Added
+
+        except AttributeError as e:
+             # This warning should now be less likely unless names mismatch _setup_financial_summary
+            print(f"Warning: Financial label not found during style application: {e}. Check widget names in _setup_financial_summary and _apply_styles.")
+        # --- End Financial Labels ---
 
     def _connect_signals(self):
         """Connect widget signals to their respective slots."""

@@ -44,7 +44,7 @@ class PatientDetailWidget(QWidget):
                 margin-top: 1ex;
                 padding: 15px;
                 background-color: white;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
