@@ -48,7 +48,7 @@ class AddPatientDialog(QDialog):
         form_layout = QFormLayout()
 
         form_layout.addRow(QLabel("Name:"), self.name_input)
-        form_layout.addRow(QLabel("Father's Name:"), self.fname_input)
+        form_layout.addRow(QLabel("Father's / Husband:"), self.fname_input)
         form_layout.addRow(QLabel("Gender:"), self.gender_input)
         form_layout.addRow(QLabel("Age:"), self.age_input)
         form_layout.addRow(QLabel("Phone Number:"), self.phone_input)

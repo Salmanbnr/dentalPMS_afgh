@@ -106,7 +106,7 @@ class PatientDetailWidget(QWidget):
         self.address_label = QLabel("N/A")
         self.address_label.setWordWrap(True)
         self.patient_details_layout.addRow("<b>Name:</b>", self.name_label)
-        self.patient_details_layout.addRow("<b>Father's Name:</b>", self.fname_label)
+        self.patient_details_layout.addRow("<b>Father's / Husband:</b>", self.fname_label)
         self.patient_details_layout.addRow("<b>Age:</b>", self.age_label)
         self.patient_details_layout.addRow("<b>Phone:</b>", self.phone_label)
         self.patient_details_layout.addRow("<b>Address:</b>", self.address_label)

@@ -213,7 +213,7 @@ class PatientListPage(QWidget):
         # --- Patient Table ---
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(5)
-        self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "Father's Name", "Phone Number", "Address"])
+        self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "Father's / Husband Name", "Phone Number", "Address"])
         self.patient_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.patient_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.patient_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)

@@ -52,7 +52,7 @@ class PatientEditWindow(QDialog):
 
         # Add widgets to form layout
         self.form_layout.addRow(QLabel("Name:"), self.name_input)
-        self.form_layout.addRow(QLabel("Father's Name:"), self.fname_input)
+        self.form_layout.addRow(QLabel("Father's / Husband:"), self.fname_input)
         self.form_layout.addRow(QLabel("Gender:"), self.gender_input)
         self.form_layout.addRow(QLabel("Age:"), self.age_input)
         self.form_layout.addRow(QLabel("Phone Number:"), self.phone_input)
