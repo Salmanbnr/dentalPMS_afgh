@@ -1,94 +1,100 @@
-# ui/analysis/patient_analysis.py
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QTableWidget, QTableWidgetItem, QScrollArea, QLabel, QPushButton, QTabWidget, QFrame, QSplitter
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, 
+                            QTableWidget, QTableWidgetItem, QScrollArea, QLabel, 
+                            QPushButton, QFrame, QSplitter, QSizePolicy, QHeaderView)
 from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QColor, QPalette, QFont
 import pyqtgraph as pg
-import qtawesome as qta
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from model.analysis_model import get_patient_demographics, get_patient_visit_frequency, get_inactive_patients, get_single_visit_patients
 import pandas as pd
+import qtawesome as qta
 
-# Color constants
-COLOR_PRIMARY = "#2c3e50"
-COLOR_SECONDARY = "#ecf0f1"
-COLOR_ACCENT = "#3498db"
-COLOR_SUCCESS = "#27ae60"
-COLOR_WARNING = "#f1c40f"
-COLOR_DANGER = "#e74c3c"
-COLOR_TEXT_LIGHT = "#ffffff"
-COLOR_TEXT_DARK = "#34495e"
-COLOR_BORDER = "#bdc3c7"
-COLOR_HOVER = "#4a6fa5"
+# Modern color palette - professional and calm
+COLOR_PRIMARY = "#1e3d59"       # Dark blue
+COLOR_SECONDARY = "#f5f5f5"     # Light gray
+COLOR_ACCENT = "#3498db"        # Blue
+COLOR_SUCCESS = "#27ae60"       # Green
+COLOR_WARNING = "#f39c12"       # Amber
+COLOR_DANGER = "#e74c3c"        # Red
+COLOR_TEXT_LIGHT = "#ffffff"    # White
+COLOR_TEXT_DARK = "#2c3e50"     # Dark slate
+COLOR_BORDER = "#e0e0e0"        # Light border
+COLOR_CHART_BG = "#ffffff"      # White background for charts
+COLOR_HOVER = "#4a6fa5"         # Hover state
 
-# Stylesheet
-ANALYSIS_STYLESHEET = f"""
+# Professional dashboard stylesheet
+DASHBOARD_STYLESHEET = f"""
     QWidget {{
         background-color: {COLOR_SECONDARY};
         color: {COLOR_TEXT_DARK};
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Segoe UI', 'Arial', sans-serif;
     }}
-    QLabel#title {{
-        font-size: 18pt;
+    QLabel#header {{
+        font-size: 24pt;
         font-weight: bold;
         color: {COLOR_PRIMARY};
+        padding: 5px;
+    }}
+    QLabel#subtitle {{
+        font-size: 12pt;
+        color: {COLOR_TEXT_DARK};
+        padding-bottom: 10px;
     }}
     QPushButton#refreshBtn {{
         background-color: {COLOR_ACCENT};
         color: {COLOR_TEXT_LIGHT};
-        border-radius: 5px;
-        padding: 5px 10px;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-weight: bold;
+        font-size: 10pt;
     }}
     QPushButton#refreshBtn:hover {{
         background-color: {COLOR_HOVER};
     }}
-    QFrame#card {{
-        background-color: {COLOR_PRIMARY};
-        border-radius: 10px;
-        padding: 15px;
+    QFrame#metricCard {{
+        background-color: {COLOR_CHART_BG};
+        border-radius: 6px;
+        border: 1px solid {COLOR_BORDER};
     }}
     QLabel#cardTitle {{
-        color: {COLOR_TEXT_LIGHT};
-        font-size: 12pt;
+        color: {COLOR_TEXT_DARK};
+        font-size: 10pt;
         background: transparent;
+        padding-top: 8px;
     }}
     QLabel#cardValue {{
-        color: {COLOR_TEXT_LIGHT};
-        font-size: 24pt;
+        color: {COLOR_PRIMARY};
+        font-size: 22pt;
         font-weight: bold;
-        background-color: {COLOR_ACCENT};
-        padding: 5px;
-        border-radius: 4px;
+        background: transparent;
     }}
-    QTabWidget::pane {{
-        border: none;
+    QLabel#cardIcon {{
+        background: transparent;
     }}
-    QTabBar::tab {{
-        background: {COLOR_PRIMARY};
-        color: {COLOR_TEXT_LIGHT};
-        padding: 10px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }}
-    QTabBar::tab:selected {{
-        background: {COLOR_ACCENT};
+    QLabel#sectionTitle {{
+        font-size: 14pt;
+        font-weight: bold;
+        color: {COLOR_PRIMARY};
+        padding: 10px 0;
     }}
     QTableWidget {{
         border: 1px solid {COLOR_BORDER};
+        border-radius: 6px;
         gridline-color: {COLOR_BORDER};
         font-size: 10pt;
         background-color: white;
+        selection-background-color: {COLOR_ACCENT}40;
+        selection-color: {COLOR_TEXT_DARK};
     }}
     QTableWidget::item {{
         padding: 5px;
-    }}
-    QTableWidget::item:selected {{
-        background-color: {COLOR_ACCENT};
-        color: {COLOR_TEXT_LIGHT};
+        border-bottom: 1px solid {COLOR_BORDER};
     }}
     QHeaderView::section {{
         background-color: {COLOR_PRIMARY};
         color: {COLOR_TEXT_LIGHT};
-        padding: 6px;
+        padding: 8px;
         border: none;
         font-weight: bold;
     }}
@@ -96,32 +102,23 @@ ANALYSIS_STYLESHEET = f"""
         border: none;
         background-color: transparent;
     }}
-    QScrollBar:vertical {{
-        border: none;
-        background: {COLOR_SECONDARY};
-        width: 8px;
+    QFrame#chartFrame {{
+        background-color: {COLOR_CHART_BG};
+        border-radius: 6px;
+        border: 1px solid {COLOR_BORDER};
+        padding: 10px;
     }}
-    QScrollBar::handle:vertical {{
-        background: {COLOR_BORDER};
-        min-height: 20px;
-        border-radius: 4px;
-    }}
-    QScrollBar:horizontal {{
-        border: none;
-        background: {COLOR_SECONDARY};
-        height: 8px;
-    }}
-    QScrollBar::handle:horizontal {{
-        background: {COLOR_BORDER};
-        min-width: 20px;
-        border-radius: 4px;
+    QFrame#visitorsFrame {{
+        background-color: {COLOR_CHART_BG};
+        border-radius: 6px;
+        border: 1px solid {COLOR_BORDER};
     }}
 """
 
 class PatientAnalysis(QWidget):
     def __init__(self):
         super().__init__()
-        self.setStyleSheet(ANALYSIS_STYLESHEET)
+        self.setStyleSheet(DASHBOARD_STYLESHEET)
         self.setWindowTitle("Patient Analytics Dashboard")
         self.setMinimumSize(1200, 800)
         self.init_ui()
@@ -129,53 +126,163 @@ class PatientAnalysis(QWidget):
     def init_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(15)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header
+        # Header with welcome message
         header_layout = QHBoxLayout()
-        title = QLabel("Patient Analytics Dashboard", objectName="title")
-        refresh_btn = QPushButton(qta.icon('fa5s.sync', color=COLOR_TEXT_LIGHT), " Refresh", objectName="refreshBtn")
+        header_layout.setContentsMargins(0, 0, 0, 10)
+        
+        title_layout = QVBoxLayout()
+        header = QLabel("Patient Analytics Dashboard", objectName="header")
+        subtitle = QLabel("Monitor patient statistics and trends", objectName="subtitle")
+        title_layout.addWidget(header)
+        title_layout.addWidget(subtitle)
+        
+        refresh_btn = QPushButton(qta.icon('fa5s.sync', color=COLOR_TEXT_LIGHT), " Refresh Data", objectName="refreshBtn")
         refresh_btn.clicked.connect(self.refresh_data)
-        refresh_btn.setIconSize(QSize(16, 16))
-        header_layout.addWidget(title)
+        refresh_btn.setIconSize(QSize(14, 14))
+        
+        header_layout.addLayout(title_layout)
         header_layout.addStretch()
         header_layout.addWidget(refresh_btn)
         main_layout.addLayout(header_layout)
 
-        # Summary Cards
+        # Overview Cards
+        overview_label = QLabel("Overview", objectName="sectionTitle")
+        main_layout.addWidget(overview_label)
+        
         card_layout = QGridLayout()
-        card_layout.setSpacing(10)
+        card_layout.setSpacing(15)
         self.cards = {}
         metrics = [
             ("Total Patients", "fa5s.users", COLOR_ACCENT, self.get_total_patients),
             ("Active Patients", "fa5s.user-check", COLOR_SUCCESS, self.get_active_patients),
-            ("Inactive Patients", "fa5s.user-times", COLOR_DANGER, self.get_inactive_count),
             ("Single-Visit Patients", "fa5s.user-clock", COLOR_WARNING, self.get_single_visit_count),
+            ("Inactive Patients", "fa5s.user-times", COLOR_DANGER, self.get_inactive_count),
         ]
+        
         for i, (label, icon, color, func) in enumerate(metrics):
-            frame = QFrame(objectName="card")
-            frame_layout = QHBoxLayout(frame)
-            icon_lbl = QLabel()
-            icon_lbl.setStyleSheet("background: transparent;")
-            icon_lbl.setPixmap(qta.icon(icon, color=COLOR_TEXT_LIGHT).pixmap(80, 80))
-            text_layout = QVBoxLayout()
+            frame = QFrame(objectName="metricCard")
+            frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            frame.setFixedHeight(110)
+            
+            frame_layout = QVBoxLayout(frame)
+            frame_layout.setContentsMargins(15, 10, 15, 10)
+            
             title_lbl = QLabel(label, objectName="cardTitle")
             value_lbl = QLabel("0", objectName="cardValue")
-            text_layout.addWidget(title_lbl)
-            text_layout.addWidget(value_lbl)
-            frame_layout.addWidget(icon_lbl)
-            frame_layout.addLayout(text_layout)
+            
+            icon_lbl = QLabel(objectName="cardIcon")
+            icon_lbl.setPixmap(qta.icon(icon, color=color).pixmap(32, 32))
+            
+            title_row = QHBoxLayout()
+            title_row.addWidget(icon_lbl)
+            title_row.addWidget(title_lbl)
+            title_row.addStretch()
+            
+            frame_layout.addLayout(title_row)
+            frame_layout.addWidget(value_lbl)
+            frame_layout.addStretch()
+            
             card_layout.addWidget(frame, 0, i)
             self.cards[label] = (value_lbl, func)
+        
         main_layout.addLayout(card_layout)
 
-        # Tabs
-        self.tabs = QTabWidget()
-        self.tabs.addTab(self.create_demographics_tab(), "Demographics")
-        self.tabs.addTab(self.create_visit_tab(), "Visit Frequency")
-        self.tabs.addTab(self.create_inactive_tab(), "Inactive Patients")
-        main_layout.addWidget(self.tabs)
+        # Main content area wrapped in scroll area for page scrolling
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_content = QWidget()
+        content_layout = QHBoxLayout(scroll_content)
+        content_layout.setSpacing(15)
 
+        # Left column - Demographics
+        left_column = QVBoxLayout()
+        demographics_label = QLabel("Patient Demographics", objectName="sectionTitle")
+        left_column.addWidget(demographics_label)
+        
+        # Demographics charts
+        demographics_frame = QFrame(objectName="chartFrame")
+        demographics_layout = QHBoxLayout(demographics_frame)
+        
+        # Gender pie chart
+        self.gender_canvas = FigureCanvas(plt.Figure(figsize=(5, 5)))
+        self.gender_ax = self.gender_canvas.figure.add_subplot(111)
+        self.gender_canvas.figure.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+        # Disable wheel events on Matplotlib canvas
+        self.gender_canvas.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.gender_canvas.wheelEvent = lambda event: None  # Ignore wheel events
+
+        # Age distribution chart
+        self.age_plot = pg.PlotWidget()
+        self.age_plot.setBackground(COLOR_CHART_BG)
+        self.age_plot.showGrid(x=True, y=True, alpha=0.3)
+        self.age_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        self.age_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        self.age_plot.setLabel('left', 'Patient Count')
+        self.age_plot.setLabel('bottom', 'Age Group')
+        # Disable wheel events on PyQtGraph plot
+        self.age_plot.wheelEvent = lambda event: None  # Ignore wheel events
+
+        demographics_layout.addWidget(self.gender_canvas)
+        demographics_layout.addWidget(self.age_plot)
+        left_column.addWidget(demographics_frame)
+        
+        # Right column - Visit Frequency with Chart and Table
+        right_column = QVBoxLayout()
+        visit_frequency_label = QLabel("Visit Frequency", objectName="sectionTitle")
+        right_column.addWidget(visit_frequency_label)
+        
+        # Visit frequency frame containing both chart and table
+        visit_frame = QFrame(objectName="visitorsFrame")
+        visit_layout = QVBoxLayout(visit_frame)
+        
+        # Chart title
+        chart_title = QLabel("Top 10 Most Frequent Visitors", objectName="cardTitle")
+        visit_layout.addWidget(chart_title)
+        
+        # Chart
+        self.visit_chart = pg.PlotWidget()
+        self.visit_chart.setBackground(COLOR_CHART_BG)
+        self.visit_chart.showGrid(x=True, y=True, alpha=0.3)
+        self.visit_chart.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        self.visit_chart.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        self.visit_chart.setLabel('left', 'Visit Count')
+        self.visit_chart.setLabel('bottom', 'Patient')
+        self.visit_chart.setMaximumHeight(250)
+        # Disable wheel events on PyQtGraph plot
+        self.visit_chart.wheelEvent = lambda event: None  # Ignore wheel events
+
+        visit_layout.addWidget(self.visit_chart)
+        
+        # Table title
+        table_title = QLabel("Frequent Visitors Details", objectName="cardTitle")
+        visit_layout.addWidget(table_title)
+        
+        # Visit frequency table
+        self.visit_table = QTableWidget()
+        self.visit_table.setColumnCount(7)
+        self.visit_table.setHorizontalHeaderLabels([
+            'Patient ID', 'Name', 'Visit Count', 'First Visit', 
+            'Last Visit', 'Avg Days Between', 'Days Since Last'
+        ])
+        self.visit_table.verticalHeader().setVisible(False)
+        self.visit_table.setAlternatingRowColors(True)
+        self.visit_table.horizontalHeader().setStretchLastSection(True)
+        self.visit_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        visit_layout.addWidget(self.visit_table)
+        
+        right_column.addWidget(visit_frame)
+                
+        # Add columns to content layout
+        content_layout.addLayout(left_column, 1)  # 50% width
+        content_layout.addLayout(right_column, 1)  # 50% width
+        
+        scroll_area.setWidget(scroll_content)
+        main_layout.addWidget(scroll_area)
+        
         # Load data
         self.refresh_data()
 
@@ -184,7 +291,6 @@ class PatientAnalysis(QWidget):
             value_lbl.setText(str(func()))
         self.load_demographics()
         self.load_visit_frequency()
-        self.load_inactive_data()
 
     # Metrics
     def get_total_patients(self):
@@ -200,164 +306,97 @@ class PatientAnalysis(QWidget):
     def get_single_visit_count(self):
         return len(get_single_visit_patients())
 
-    # Demographics Tab
-    def create_demographics_tab(self):
-        tab = QWidget()
-        splitter = QSplitter(Qt.Horizontal)
-
-        # Pie Chart for Gender
-        self.gender_canvas = FigureCanvas(plt.Figure(figsize=(4,4)))
-        self.gender_canvas.setMinimumWidth(400)
-        self.gender_ax = self.gender_canvas.figure.add_subplot(111)
-
-        # Bar Chart for Age
-        self.age_plot = pg.PlotWidget()
-        self.age_plot.setMinimumWidth(400)
-        self.age_plot.setBackground(COLOR_SECONDARY)
-        self.age_plot.showGrid(x=True, y=True, alpha=0.3)
-        self.age_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.age_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.age_plot.setStyleSheet(f"border: 1px solid {COLOR_BORDER}; border-radius: 4px;")
-
-        splitter.addWidget(self.gender_canvas)
-        splitter.addWidget(self.age_plot)
-        splitter.setSizes([500,500])
-
-        scroll = QScrollArea()
-        scroll.setWidget(splitter)
-        scroll.setWidgetResizable(False)
-        scroll.setFixedHeight(450)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        layout = QVBoxLayout(tab)
-        layout.addWidget(scroll)
-        return tab
-
     def load_demographics(self):
         data = get_patient_demographics()
-        # Gender Pie
-        gender_df = pd.DataFrame(data['gender'], columns=['gender','count'])
+        
+        # Gender Pie Chart
+        gender_df = pd.DataFrame(data['gender'], columns=['gender', 'count'])
         self.gender_ax.clear()
         colors = [COLOR_ACCENT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER]
-        self.gender_ax.pie(gender_df['count'], labels=gender_df['gender'], autopct='%1.1f%%', colors=colors[:len(gender_df)])
-        self.gender_ax.set_title('Gender Distribution')
+        wedges, texts, autotexts = self.gender_ax.pie(
+            gender_df['count'], 
+            labels=gender_df['gender'], 
+            autopct='%1.1f%%', 
+            colors=colors[:len(gender_df)],
+            startangle=90,
+            wedgeprops={'width': 0.5, 'edgecolor': 'w', 'linewidth': 1}
+        )
+        for text in texts:
+            text.set_fontsize(10)
+        for autotext in autotexts:
+            autotext.set_fontsize(10)
+            autotext.set_color('white')
+        self.gender_ax.set_title('Gender Distribution', fontsize=12, pad=10)
         self.gender_canvas.draw()
 
-        # Age Bar
-        age_df = pd.DataFrame(data['age'], columns=['age_group','count'])
-        brushes = [pg.mkBrush(COLOR_ACCENT), pg.mkBrush(COLOR_SUCCESS), pg.mkBrush(COLOR_WARNING), pg.mkBrush(COLOR_DANGER), pg.mkBrush('#9b59b6')]
+        # Age Bar Chart
+        age_df = pd.DataFrame(data['age'], columns=['age_group', 'count'])
         x = list(range(len(age_df)))
+        brushes = [pg.mkBrush(COLOR_ACCENT) for _ in range(len(age_df))]
         self.age_plot.clear()
-        self.age_plot.addItem(pg.BarGraphItem(x=x, height=age_df['count'], width=0.6, brushes=brushes[:len(age_df)]))
-        self.age_plot.getAxis('bottom').setTicks([[(i, a) for i,a in enumerate(age_df['age_group'])]])
-
-    # Visit Frequency Tab
-    def create_visit_tab(self):
-        tab = QWidget()
-        splitter = QSplitter(Qt.Horizontal)
-
-        # Chart
-        self.visit_chart = pg.PlotWidget(title="Top 10 Frequent Visitors")
-        self.visit_chart.setBackground(COLOR_SECONDARY)
-        self.visit_chart.showGrid(x=True, y=True, alpha=0.3)
-        self.visit_chart.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.visit_chart.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.visit_chart.setStyleSheet(f"border: 1px solid {COLOR_BORDER}; border-radius: 4px;")
-
-        # Table
-        self.visit_table = QTableWidget()
-        self.visit_table.setColumnCount(7)
-        self.visit_table.setHorizontalHeaderLabels(['Patient ID','Name','Visit Count','First Visit','Last Visit','Avg Days','Days Since'])
-        self.visit_table.verticalHeader().setVisible(False)
-        self.visit_table.setAlternatingRowColors(True)
-        scroll = QScrollArea()
-        scroll.setWidget(self.visit_table)
-        scroll.setWidgetResizable(True)
-
-        splitter.addWidget(self.visit_chart)
-        splitter.addWidget(scroll)
-        splitter.setSizes([500,500])
-
-        layout = QVBoxLayout(tab)
-        layout.addWidget(splitter)
-        return tab
+        self.age_plot.addItem(pg.BarGraphItem(x=x, height=age_df['count'], width=0.6, brushes=brushes))
+        self.age_plot.getAxis('bottom').setTicks([[(i, a) for i, a in enumerate(age_df['age_group'])]])
+        self.age_plot.setTitle('Age Distribution', color=COLOR_TEXT_DARK, size='12pt')
 
     def load_visit_frequency(self):
         data = get_patient_visit_frequency()
         top10 = sorted(data, key=lambda x: x['visit_count'], reverse=True)[:10]
         df = pd.DataFrame(top10)
-        colors = [COLOR_ACCENT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER, '#9b59b6']
-        brushes = [pg.mkBrush(colors[i % len(colors)]) for i in range(len(df))]
-        x = list(range(len(df)))
+        
+        # Bar chart for top 10
+        x = range(len(df))
         self.visit_chart.clear()
-        self.visit_chart.addItem(pg.BarGraphItem(x=x, height=df['visit_count'], width=0.6, brushes=brushes))
+        self.visit_chart.addItem(pg.BarGraphItem(
+            x=x, 
+            height=df['visit_count'], 
+            width=0.7, 
+            brush=COLOR_ACCENT
+        ))
         self.visit_chart.getAxis('bottom').setTicks([[(i, df.iloc[i]['name']) for i in x]])
-
-        self.visit_table.setRowCount(len(data))
-        for r, e in enumerate(data):
-            self.visit_table.setItem(r,0,QTableWidgetItem(str(e['patient_id'])))
-            self.visit_table.setItem(r,1,QTableWidgetItem(e['name']))
-            self.visit_table.setItem(r,2,QTableWidgetItem(str(e['visit_count'])))
-            self.visit_table.setItem(r,3,QTableWidgetItem(e['first_visit'] or 'N/A'))
-            self.visit_table.setItem(r,4,QTableWidgetItem(e['last_visit'] or 'N/A'))
-            self.visit_table.setItem(r,5,QTableWidgetItem(str(e['avg_days_between_visits']) if e['avg_days_between_visits'] else 'N/A'))
-            self.visit_table.setItem(r,6,QTableWidgetItem(str(e['days_since_last_visit']) if e['days_since_last_visit'] else 'N/A'))
+        
+        # Table for top frequent visitors
+        self.visit_table.setRowCount(len(top10))
+        for r, patient in enumerate(top10):
+            self.visit_table.setItem(r, 0, QTableWidgetItem(str(patient['patient_id'])))
+            
+            # Make patient name bold
+            name_item = QTableWidgetItem(patient['name'])
+            name_item.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            self.visit_table.setItem(r, 1, name_item)
+            
+            # Color code visit count based on frequency
+            visit_count = patient['visit_count']
+            visit_item = QTableWidgetItem(str(visit_count))
+            if visit_count > 10:
+                visit_item.setForeground(QColor(COLOR_SUCCESS))
+                visit_item.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            elif visit_count > 5:
+                visit_item.setForeground(QColor(COLOR_ACCENT))
+            self.visit_table.setItem(r, 2, visit_item)
+            
+            # First and last visit dates
+            self.visit_table.setItem(r, 3, QTableWidgetItem(patient.get('first_visit', 'N/A')))
+            self.visit_table.setItem(r, 4, QTableWidgetItem(patient.get('last_visit', 'N/A')))
+            
+            # Average days between visits and days since last visit
+            avg_days = patient.get('avg_days_between_visits')
+            if avg_days is not None:
+                self.visit_table.setItem(r, 5, QTableWidgetItem(f"{avg_days:.1f}"))
+            else:
+                self.visit_table.setItem(r, 5, QTableWidgetItem('N/A'))
+                
+            days_since = patient.get('days_since_last_visit')
+            days_item = QTableWidgetItem(str(days_since) if days_since is not None else 'N/A')
+            
+            # Color code days since last visit
+            if days_since is not None:
+                if days_since > 90:
+                    days_item.setForeground(QColor(COLOR_DANGER))
+                elif days_since > 60:
+                    days_item.setForeground(QColor(COLOR_WARNING))
+                elif days_since < 30:
+                    days_item.setForeground(QColor(COLOR_SUCCESS))
+            
+            self.visit_table.setItem(r, 6, days_item)
+            
         self.visit_table.resizeColumnsToContents()
-
-    # Inactive Patients Tab
-    def create_inactive_tab(self):
-        tab = QWidget()
-        splitter = QSplitter(Qt.Horizontal)
-
-        # Chart
-        self.inactive_chart = pg.PlotWidget(title="Inactive by Duration")
-        self.inactive_chart.setBackground(COLOR_SECONDARY)
-        self.inactive_chart.showGrid(x=True, y=True, alpha=0.3)
-        self.inactive_chart.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.inactive_chart.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.inactive_chart.setStyleSheet(f"border: 1px solid {COLOR_BORDER}; border-radius: 4px;")
-
-        # Table
-        self.inactive_table = QTableWidget()
-        self.inactive_table.setColumnCount(5)
-        self.inactive_table.setHorizontalHeaderLabels(['ID','Name','Phone','Last Visit','Days Inactive'])
-        self.inactive_table.verticalHeader().setVisible(False)
-        self.inactive_table.setAlternatingRowColors(True)
-        scroll2 = QScrollArea()
-        scroll2.setWidget(self.inactive_table)
-        scroll2.setWidgetResizable(True)
-
-        splitter.addWidget(self.inactive_chart)
-        splitter.addWidget(scroll2)
-        splitter.setSizes([500,500])
-
-        layout = QVBoxLayout(tab)
-        layout.addWidget(splitter)
-        return tab
-
-    def load_inactive_data(self):
-        data = get_inactive_patients()
-        df = pd.DataFrame(data)
-        if not df.empty and 'days_inactive' in df.columns:
-            bins = [0,30,60,90,df['days_inactive'].max()+1]
-            labels = ['0-30','31-60','61-90','90+']
-            df['bucket'] = pd.cut(df['days_inactive'], bins=bins, labels=labels, right=False)
-            counts = df['bucket'].value_counts().reindex(labels).fillna(0)
-            colors = [COLOR_DANGER, COLOR_WARNING, COLOR_ACCENT, COLOR_SUCCESS]
-            brushes = [pg.mkBrush(colors[i]) for i in range(len(labels))]
-            x = list(range(len(labels)))
-            self.inactive_chart.clear()
-            self.inactive_chart.addItem(pg.BarGraphItem(x=x, height=counts.values.tolist(), width=0.6, brushes=brushes))
-            self.inactive_chart.getAxis('bottom').setTicks([[(i, labels[i]) for i in x]])
-        else:
-            self.inactive_chart.clear()
-
-        self.inactive_table.setRowCount(len(data))
-        for r,e in enumerate(data):
-            self.inactive_table.setItem(r,0,QTableWidgetItem(str(e['patient_id'])))
-            self.inactive_table.setItem(r,1,QTableWidgetItem(e['name']))
-            self.inactive_table.setItem(r,2,QTableWidgetItem(e.get('phone_number','N/A')))
-            self.inactive_table.setItem(r,3,QTableWidgetItem(e.get('last_visit','')))
-            self.inactive_table.setItem(r,4,QTableWidgetItem(str(round(e.get('days_inactive',0)))))
-        self.inactive_table.resizeColumnsToContents()
