@@ -115,10 +115,11 @@ class DashboardWindow(QMainWindow):
         sidebar_layout.addWidget(line)
 
         self.nav_buttons = {}
-        self.home_button = self.add_nav_button(sidebar_layout, "HOME", 'fa5s.home', 0)
-        self.due_patients_button = self.add_nav_button(sidebar_layout, "DUE PATIENTS", 'fa5s.money-bill-alt', 1)  # New button for Due Patients
-        self.inventory_button = self.add_nav_button(sidebar_layout, "INVENTORY", 'fa5s.box', 2)  # Inventory button
-        self.settings_button = self.add_nav_button(sidebar_layout, "SETTINGS", 'fa5s.cog', 3)
+        # Connect directly to refresh functions instead of switch_tab
+        self.home_button = self.add_nav_button(sidebar_layout, "HOME", 'fa5s.home', self.refresh_home_page)
+        self.due_patients_button = self.add_nav_button(sidebar_layout, "DUE PATIENTS", 'fa5s.money-bill-alt', self.refresh_due_patients)
+        self.inventory_button = self.add_nav_button(sidebar_layout, "INVENTORY", 'fa5s.box', self.refresh_inventory)
+        self.settings_button = self.add_nav_button(sidebar_layout, "SETTINGS", 'fa5s.cog', self.refresh_settings)
 
         sidebar_layout.addStretch(1)
         main_layout.addWidget(self.sidebar)
@@ -130,18 +131,16 @@ class DashboardWindow(QMainWindow):
         self.init_home_page()
 
         # Add Due Patients widget
-        self.due_patients_page = DuePatientsWidget(self)  # Create instance of DuePatientsWidget
-        self.content_stack.addWidget(self.due_patients_page)
+        self.due_patients_page = None
+        self.init_due_patients_page()
 
         # Create and add Inventory management UI
-        self.inventory_page = InventoryManagementWindow()
-        self.inventory_widget = self.inventory_page.get_central_widget()
-        self.content_stack.addWidget(self.inventory_widget)
+        self.inventory_page = None
+        self.init_inventory_page()
 
-        placeholder_settings = QLabel("Settings Page")
-        placeholder_settings.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder_settings.setStyleSheet("font-size: 24px;")
-        self.content_stack.addWidget(placeholder_settings)
+        # Create settings page
+        self.settings_page = None
+        self.init_settings_page()
 
         main_layout.addWidget(self.content_stack)
 
@@ -157,42 +156,95 @@ class DashboardWindow(QMainWindow):
 
             self.home_page = PatientListPage(self)
             self.content_stack.insertWidget(0, self.home_page)
-            self.content_stack.setCurrentIndex(0)
         except Exception as e:
             error_widget = QLabel(f"Error loading PatientListPage: {str(e)}")
             error_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.home_page = error_widget
             self.content_stack.insertWidget(0, error_widget)
 
-    def add_nav_button(self, layout, text, icon_name, index):
+    def init_due_patients_page(self):
+        try:
+            if self.due_patients_page is not None:
+                self.content_stack.removeWidget(self.due_patients_page)
+                self.due_patients_page.deleteLater()
+                
+            self.due_patients_page = DuePatientsWidget(self)
+            self.content_stack.insertWidget(1, self.due_patients_page)
+        except Exception as e:
+            error_widget = QLabel(f"Error loading DuePatientsWidget: {str(e)}")
+            error_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.due_patients_page = error_widget
+            self.content_stack.insertWidget(1, error_widget)
+
+    def init_inventory_page(self):
+        try:
+            if self.inventory_page is not None:
+                self.content_stack.removeWidget(self.inventory_page)
+                self.inventory_page.deleteLater()
+                
+            self.inventory_page = InventoryManagementWindow()
+            self.inventory_widget = self.inventory_page.get_central_widget()
+            self.content_stack.insertWidget(2, self.inventory_widget)
+            self.inventory_page = self.inventory_widget  # Store reference for deletion later
+        except Exception as e:
+            error_widget = QLabel(f"Error loading InventoryManagementWindow: {str(e)}")
+            error_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.inventory_page = error_widget
+            self.content_stack.insertWidget(2, error_widget)
+
+    def init_settings_page(self):
+        try:
+            if self.settings_page is not None:
+                self.content_stack.removeWidget(self.settings_page)
+                self.settings_page.deleteLater()
+                
+            self.settings_page = QLabel("Settings Page")
+            self.settings_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.settings_page.setStyleSheet("font-size: 24px;")
+            self.content_stack.insertWidget(3, self.settings_page)
+        except Exception as e:
+            error_widget = QLabel(f"Error loading Settings: {str(e)}")
+            error_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.settings_page = error_widget
+            self.content_stack.insertWidget(3, error_widget)
+
+    def add_nav_button(self, layout, text, icon_name, callback_function):
         button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
         button.setCheckable(True)
-        button.clicked.connect(lambda checked=True, idx=index, btn=button: self.switch_tab(checked, idx, btn))
+        button.clicked.connect(callback_function)
         layout.addWidget(button)
-        self.nav_buttons[index] = button
         return button
 
-    def switch_tab(self, checked, index, button):
-        if not checked:
-            if self.current_button == button:
-                button.setChecked(True)
-            return
-
-        for btn in self.nav_buttons.values():
-            if btn != button:
+    def update_button_states(self, active_button):
+        # Update button states
+        for btn in [self.home_button, self.due_patients_button, self.inventory_button, self.settings_button]:
+            if btn != active_button:
                 btn.setChecked(False)
+        active_button.setChecked(True)
+        self.current_button = active_button
 
-        if index < self.content_stack.count():
-            self.content_stack.setCurrentIndex(index)
-            self.current_button = button
-        else:
-            button.setChecked(False)
-            if self.current_button:
-                self.current_button.setChecked(True)
+    def refresh_home_page(self):
+        self.init_home_page()  # Recreate the page
+        self.content_stack.setCurrentIndex(0)
+        self.update_button_states(self.home_button)
+
+    def refresh_due_patients(self):
+        self.init_due_patients_page()  # Recreate the page
+        self.content_stack.setCurrentIndex(1)
+        self.update_button_states(self.due_patients_button)
+
+    def refresh_inventory(self):
+        self.init_inventory_page()  # Recreate the page
+        self.content_stack.setCurrentIndex(2)
+        self.update_button_states(self.inventory_button)
+
+    def refresh_settings(self):
+        self.init_settings_page()  # Recreate the page
+        self.content_stack.setCurrentIndex(3)
+        self.update_button_states(self.settings_button)
 
     def show_home_page(self):
-        self.init_home_page()
-        self.home_button.setChecked(True)
-        self.current_button = self.home_button
+        self.refresh_home_page()
 
     def closeEvent(self, event):
         current_page = self.content_stack.currentWidget()
