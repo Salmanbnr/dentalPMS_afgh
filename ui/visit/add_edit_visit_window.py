@@ -449,7 +449,7 @@ class AddEditVisitWindow(QWidget):
         """Add a service item to the services table and database if editing."""
         service_name = self.service_combo.currentText()
         if not service_name or service_name not in self.available_services:
-            QMessageBox.warning(self, "Selection Error", "Please select a valid service.")
+            self.show_message("Warning", "Please select a valid service.")
             return
 
         service_id = self.available_services[service_name]['id']
@@ -490,7 +490,7 @@ class AddEditVisitWindow(QWidget):
         """Add a prescription item to the prescriptions table and database if editing."""
         med_name = self.med_combo.currentText()
         if not med_name or med_name not in self.available_medications:
-            QMessageBox.warning(self, "Selection Error", "Please select a valid medication.")
+            self.show_message("Warning","Please select a valid medication.")
             return
 
         med_id = self.available_medications[med_name]['id']
@@ -725,17 +725,23 @@ class AddEditVisitWindow(QWidget):
                 QMessageBox.warning(self, "Partial Success", "New visit created, but some items may have failed.")
 
     def show_message(self, title, message):
-        """Show a message box with custom styled OK button."""
+        """
+        Show a message box with a custom styled OK button.
+        The OK button is styled with a professional blue color.
+        """
+        # Create a QMessageBox instance
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle(title)
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
 
-        # Style the OK button
+        # Retrieve the OK button from the message box
         ok_button = msg_box.button(QMessageBox.StandardButton.Ok)
+
+        # Apply custom styling to the OK button
         ok_button.setStyleSheet("""
             QPushButton {
-                background-color: #2ecc71;  /* Green color for OK button */
+                background-color: #3498db;  /* Professional blue color */
                 color: white;
                 border-radius: 4px;
                 padding: 8px 18px;
@@ -744,12 +750,19 @@ class AddEditVisitWindow(QWidget):
                 min-height: 28px;
             }
             QPushButton:hover {
-                background-color: #27ae60;  /* Darker green on hover */
+                background-color: #2980b9;  /* Darker blue on hover */
             }
             QPushButton:pressed {
-                background-color: #239b56;  /* Even darker green on press */
+                background-color: #1f618d;  /* Even darker blue on press */
             }
         """)
+
+        # Center-align the text in the message box
+        msg_box.setTextFormat(Qt.TextFormat.RichText)
+        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        # Execute the message box
+        msg_box.exec()
 
         msg_box.exec()
     def cancel(self):
