@@ -1,4 +1,3 @@
-# ui/services/services_ui.py
 import sys
 import os
 from pathlib import Path
@@ -11,9 +10,10 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
     QTextEdit, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QMessageBox, QDoubleSpinBox, QCheckBox,
-    QDialog, QDialogButtonBox, QFormLayout
+    QDialog, QDialogButtonBox, QFormLayout, QFrame, QScrollArea, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QPalette, QColor
 import qtawesome as qta
 
 from database.data_manager import (
@@ -21,8 +21,118 @@ from database.data_manager import (
     update_service, delete_service
 )
 
+# Color constants
+COLOR_PRIMARY = "#2c3e50"
+COLOR_SECONDARY = "#ecf0f1"
+COLOR_ACCENT = "#3498db"
+COLOR_TEXT_LIGHT = "#ffffff"
+COLOR_TEXT_DARK = "#34495e"
+COLOR_BORDER = "#bdc3c7"
+COLOR_HOVER = "#4a6fa5"
+
+SERVICE_PAGE_STYLESHEET = f"""
+    /* Style the ServicesManagementWidget itself */
+    #ServicesManagementWidget {{
+        background-color: {COLOR_SECONDARY};
+        padding: 15px;
+    }}
+
+    /* Header frame styling */
+    #ServicesManagementWidget #HeaderFrame {{
+        border-bottom: 1px solid {COLOR_BORDER};
+        padding-bottom: 10px;
+    }}
+
+    /* Input fields and buttons */
+    #ServicesManagementWidget QLineEdit, #ServicesManagementWidget QTextEdit, #ServicesManagementWidget QDoubleSpinBox {{
+        padding: 8px;
+        border: 1px solid {COLOR_BORDER};
+        border-radius: 4px;
+        font-size: 10pt;
+        background-color: white;
+    }}
+    #ServicesManagementWidget QPushButton {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        font-size: 10pt;
+        min-width: 120px;
+    }}
+    #ServicesManagementWidget QPushButton:hover {{
+        background-color: {COLOR_HOVER};
+    }}
+    #ServicesManagementWidget QPushButton:disabled {{
+        background-color: #95a5a6;
+        color: #ecf0f1;
+    }}
+
+    /* Table Styling */
+    #ServicesManagementWidget QTableWidget {{
+        border: 1px solid {COLOR_BORDER};
+        gridline-color: {COLOR_BORDER};
+        font-size: 10pt;
+        background-color: white;
+    }}
+    #ServicesManagementWidget QHeaderView::section {{
+        background-color: {COLOR_PRIMARY};
+        color: {COLOR_TEXT_LIGHT};
+        padding: 6px;
+        border: none;
+        border-right: 1px solid {COLOR_BORDER};
+        font-weight: bold;
+    }}
+    #ServicesManagementWidget QHeaderView::section:last {{
+        border-right: none;
+    }}
+    #ServicesManagementWidget QTableWidget::item {{
+        padding: 5px;
+        color: {COLOR_TEXT_DARK};
+    }}
+    #ServicesManagementWidget QTableWidget::item:selected {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+    }}
+    #ServicesManagementWidget QTableWidget::item:focus {{
+        outline: none;
+    }}
+
+    /* Scroll Bars */
+    #ServicesManagementWidget QScrollBar:vertical {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        width: 10px;
+        margin: 0px 0px 0px 0px;
+    }}
+    #ServicesManagementWidget QScrollBar::handle:vertical {{
+        background: {COLOR_BORDER};
+        min-height: 20px;
+        border-radius: 5px;
+    }}
+    #ServicesManagementWidget QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0px;
+        background: none;
+    }}
+    #ServicesManagementWidget QScrollBar:horizontal {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        height: 10px;
+        margin: 0px 0px 0px 0px;
+    }}
+    #ServicesManagementWidget QScrollBar::handle:horizontal {{
+        background: {COLOR_BORDER};
+        min-width: 20px;
+        border-radius: 5px;
+    }}
+    #ServicesManagementWidget QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+        width: 0px;
+        background: none;
+    }}
+"""
+
 class ServiceDialog(QDialog):
-    """Dialog for adding or editing a service"""
+    """Dialog for adding or editing a service with modern styling"""
     
     def __init__(self, parent=None, service_id=None):
         super().__init__(parent)
@@ -40,6 +150,34 @@ class ServiceDialog(QDialog):
         else:
             self.setWindowTitle("Add New Service")
         
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {COLOR_SECONDARY};
+                border-radius: 8px;
+                padding: 20px;
+            }}
+            QLineEdit, QTextEdit, QDoubleSpinBox {{
+                border: 1px solid {COLOR_BORDER};
+                border-radius: 4px;
+                padding: 8px;
+                background-color: {COLOR_TEXT_LIGHT};
+            }}
+            QLineEdit:focus, QTextEdit:focus, QDoubleSpinBox:focus {{
+                border-color: {COLOR_ACCENT};
+                outline: none;
+            }}
+            QPushButton {{
+                background-color: {COLOR_ACCENT};
+                color: {COLOR_TEXT_LIGHT};
+                border-radius: 4px;
+                padding: 8px 16px;
+                border: none;
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_HOVER};
+            }}
+        """)
+        
         self.setup_ui()
         
         # If editing, populate fields
@@ -51,39 +189,41 @@ class ServiceDialog(QDialog):
     
     def setup_ui(self):
         layout = QFormLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
         
         # Name field
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Enter service name")
-        layout.addRow("Name:", self.name_edit)
+        layout.addRow(QLabel("Name:"), self.name_edit)
         
         # Description field
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText("Enter service description")
-        self.description_edit.setMaximumHeight(100)
-        layout.addRow("Description:", self.description_edit)
+        self.description_edit.setMaximumHeight(120)
+        layout.addRow(QLabel("Description:"), self.description_edit)
         
         # Price field
         self.price_edit = QDoubleSpinBox()
         self.price_edit.setRange(0, 1000000)
         self.price_edit.setDecimals(2)
         self.price_edit.setSingleStep(10)
-        layout.addRow("Default Price:", self.price_edit)
+        self.price_edit.setSuffix(" $")
+        layout.addRow(QLabel("Default Price:"), self.price_edit)
         
         # Active checkbox
         self.active_checkbox = QCheckBox("Active")
         self.active_checkbox.setChecked(True)
-        layout.addRow("Status:", self.active_checkbox)
+        layout.addRow(QLabel("Status:"), self.active_checkbox)
         
         # Buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
-                                           QDialogButtonBox.StandardButton.Cancel)
+                                        QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addRow(self.button_box)
         
-        self.setLayout(layout)
-        self.resize(400, 300)
+        self.resize(500, 400)
     
     def accept(self):
         # Validate inputs
@@ -115,7 +255,6 @@ class ServiceDialog(QDialog):
         else:
             QMessageBox.critical(self, "Error", message)
 
-
 class ServicesManagementWidget(QWidget):
     """Widget for managing dental services"""
     
@@ -123,72 +262,92 @@ class ServicesManagementWidget(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("ServicesManagementWidget")
+        self.setStyleSheet(SERVICE_PAGE_STYLESHEET)
+        
         self.setup_ui()
         self.load_services()
     
     def setup_ui(self):
-        main_layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+        
+        # Heading "Service Management"
+        heading_label = QLabel("Service Management")
+        heading_label.setStyleSheet(f"""
+            QLabel {{
+                font-size: 24pt;
+                font-weight: bold;
+                color: {COLOR_PRIMARY};
+                margin-bottom: 15px;
+            }}
+        """)
+        main_layout.addWidget(heading_label)
         
         # Header
-        header_layout = QHBoxLayout()
-        title_label = QLabel("Services Management")
-        title_label.setStyleSheet("font-size: 16pt; font-weight: bold;")
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
+        header_frame = QFrame()
+        header_frame.setObjectName("HeaderFrame")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(10)
         
-        # Search box
+        search_icon = qta.icon('fa5s.search', color=COLOR_TEXT_DARK)
+        search_label = QLabel()
+        search_label.setPixmap(search_icon.pixmap(QSize(16, 16)))
+        
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Search services...")
         self.search_edit.textChanged.connect(self.load_services)
-        search_icon = qta.icon('fa5s.search')
-        self.search_edit.addAction(search_icon, QLineEdit.ActionPosition.LeadingPosition)
+        self.search_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.search_edit.setMinimumWidth(300)
+        
+        header_layout.addWidget(search_label)
         header_layout.addWidget(self.search_edit, 1)
+        header_layout.addStretch(1)
         
-        main_layout.addLayout(header_layout)
+        buttons = [
+            ("Add Service", 'fa5s.plus', self.add_service),
+            ("Edit Service", 'fa5s.edit', self.edit_service),
+            ("Delete Service", 'fa5s.trash', self.delete_service),
+            ("Refresh", 'fa5s.sync', self.load_services)
+        ]
         
-        # Table for displaying services
+        for text, icon_name, callback in buttons:
+            button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
+            button.clicked.connect(callback)
+            header_layout.addWidget(button)
+        
+        main_layout.addWidget(header_frame)
+        
+        # Scroll Area for Service Table
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Service Table
         self.services_table = QTableWidget()
         self.services_table.setColumnCount(5)
         self.services_table.setHorizontalHeaderLabels(["ID", "Name", "Description", "Price", "Active"])
-        self.services_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.services_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.services_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.services_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.services_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.services_table.verticalHeader().setVisible(False)
-        self.services_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.services_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.services_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.services_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.services_table.verticalHeader().setVisible(False)
+        self.services_table.horizontalHeader().setStretchLastSection(True)
+        self.services_table.setShowGrid(True)
         
-        main_layout.addWidget(self.services_table)
+        self.services_table.setColumnWidth(0, 60)
+        self.services_table.setColumnWidth(1, 180)
+        self.services_table.setColumnWidth(2, 180)
+        self.services_table.setColumnWidth(3, 130)
+        self.services_table.setColumnWidth(4, 100)
         
-        # Buttons
-        button_layout = QHBoxLayout()
+        self.services_table.itemSelectionChanged.connect(self.update_button_states)
+        self.services_table.itemDoubleClicked.connect(self.edit_service)
         
-        self.add_button = QPushButton("Add Service")
-        self.add_button.setIcon(qta.icon('fa5s.plus'))
-        self.add_button.clicked.connect(self.add_service)
-        
-        self.edit_button = QPushButton("Edit Service")
-        self.edit_button.setIcon(qta.icon('fa5s.edit'))
-        self.edit_button.clicked.connect(self.edit_service)
-        
-        self.delete_button = QPushButton("Delete Service")
-        self.delete_button.setIcon(qta.icon('fa5s.trash'))
-        self.delete_button.clicked.connect(self.delete_service)
-        
-        self.refresh_button = QPushButton("Refresh")
-        self.refresh_button.setIcon(qta.icon('fa5s.sync'))
-        self.refresh_button.clicked.connect(self.load_services)
-        
-        button_layout.addWidget(self.add_button)
-        button_layout.addWidget(self.edit_button)
-        button_layout.addWidget(self.delete_button)
-        button_layout.addStretch()
-        button_layout.addWidget(self.refresh_button)
-        
-        main_layout.addLayout(button_layout)
-        
-        self.setLayout(main_layout)
+        scroll_area.setWidget(self.services_table)
+        main_layout.addWidget(scroll_area)
     
     def load_services(self):
         """Load services from database and populate table"""
@@ -220,7 +379,7 @@ class ServicesManagementWidget(QWidget):
             
             # Price
             price_item = QTableWidgetItem(f"${service['default_price']:.2f}")
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            price_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.services_table.setItem(row, 3, price_item)
             
             # Status
@@ -228,15 +387,22 @@ class ServicesManagementWidget(QWidget):
             status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.services_table.setItem(row, 4, status_item)
     
+    def update_button_states(self):
+        is_service_selected = bool(self.services_table.selectionModel().hasSelection())
+        for i in range(self.sender().parent().count() - 1, -1, -1):  # Exclude stretch
+            widget = self.sender().parent().itemAt(i).widget()
+            if isinstance(widget, QPushButton) and widget.text() in [" Edit Service", " Delete Service"]:
+                widget.setEnabled(is_service_selected)
+    
     def get_selected_service_id(self):
         """Get the ID of the selected service"""
-        selected_items = self.services_table.selectedItems()
-        if not selected_items:
-            return None
-        
-        selected_row = selected_items[0].row()
-        id_item = self.services_table.item(selected_row, 0)
-        return id_item.data(Qt.ItemDataRole.UserRole)
+        selected_rows = self.services_table.selectionModel().selectedRows()
+        if selected_rows:
+            selected_row = selected_rows[0].row()
+            id_item = self.services_table.item(selected_row, 0)
+            if id_item:
+                return id_item.data(Qt.ItemDataRole.UserRole)
+        return None
     
     def add_service(self):
         """Open dialog to add a new service"""
@@ -296,6 +462,7 @@ if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     window = ServicesManagementWidget()
-    window.resize(800, 600)
+    window.setWindowTitle("Service Management System")
+    window.resize(1000, 700)
     window.show()
     sys.exit(app.exec())

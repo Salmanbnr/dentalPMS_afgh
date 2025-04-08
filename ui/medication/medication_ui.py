@@ -1,4 +1,3 @@
-# ui/medication/medication_ui.py
 import sys
 import os
 from pathlib import Path
@@ -11,9 +10,10 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
     QTextEdit, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QMessageBox, QDoubleSpinBox, QCheckBox,
-    QDialog, QDialogButtonBox, QFormLayout
+    QDialog, QDialogButtonBox, QFormLayout, QFrame, QScrollArea, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QPalette, QColor
 import qtawesome as qta
 
 from database.data_manager import (
@@ -21,8 +21,118 @@ from database.data_manager import (
     update_medication, delete_medication
 )
 
+# Color constants
+COLOR_PRIMARY = "#2c3e50"
+COLOR_SECONDARY = "#ecf0f1"
+COLOR_ACCENT = "#3498db"
+COLOR_TEXT_LIGHT = "#ffffff"
+COLOR_TEXT_DARK = "#34495e"
+COLOR_BORDER = "#bdc3c7"
+COLOR_HOVER = "#4a6fa5"
+
+MEDICATION_PAGE_STYLESHEET = f"""
+    /* Style the MedicationsManagementWidget itself */
+    #MedicationsManagementWidget {{
+        background-color: {COLOR_SECONDARY};
+        padding: 15px;
+    }}
+
+    /* Header frame styling */
+    #MedicationsManagementWidget #HeaderFrame {{
+        border-bottom: 1px solid {COLOR_BORDER};
+        padding-bottom: 10px;
+    }}
+
+    /* Input fields and buttons */
+    #MedicationsManagementWidget QLineEdit, #MedicationsManagementWidget QTextEdit, #MedicationsManagementWidget QDoubleSpinBox {{
+        padding: 8px;
+        border: 1px solid {COLOR_BORDER};
+        border-radius: 4px;
+        font-size: 10pt;
+        background-color: white;
+    }}
+    #MedicationsManagementWidget QPushButton {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        font-size: 10pt;
+        min-width: 120px;
+    }}
+    #MedicationsManagementWidget QPushButton:hover {{
+        background-color: {COLOR_HOVER};
+    }}
+    #MedicationsManagementWidget QPushButton:disabled {{
+        background-color: #95a5a6;
+        color: #ecf0f1;
+    }}
+
+    /* Table Styling */
+    #MedicationsManagementWidget QTableWidget {{
+        border: 1px solid {COLOR_BORDER};
+        gridline-color: {COLOR_BORDER};
+        font-size: 10pt;
+        background-color: white;
+    }}
+    #MedicationsManagementWidget QHeaderView::section {{
+        background-color: {COLOR_PRIMARY};
+        color: {COLOR_TEXT_LIGHT};
+        padding: 6px;
+        border: none;
+        border-right: 1px solid {COLOR_BORDER};
+        font-weight: bold;
+    }}
+    #MedicationsManagementWidget QHeaderView::section:last {{
+        border-right: none;
+    }}
+    #MedicationsManagementWidget QTableWidget::item {{
+        padding: 5px;
+        color: {COLOR_TEXT_DARK};
+    }}
+    #MedicationsManagementWidget QTableWidget::item:selected {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+    }}
+    #MedicationsManagementWidget QTableWidget::item:focus {{
+        outline: none;
+    }}
+
+    /* Scroll Bars */
+    #MedicationsManagementWidget QScrollBar:vertical {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        width: 10px;
+        margin: 0px 0px 0px 0px;
+    }}
+    #MedicationsManagementWidget QScrollBar::handle:vertical {{
+        background: {COLOR_BORDER};
+        min-height: 20px;
+        border-radius: 5px;
+    }}
+    #MedicationsManagementWidget QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0px;
+        background: none;
+    }}
+    #MedicationsManagementWidget QScrollBar:horizontal {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        height: 10px;
+        margin: 0px 0px 0px 0px;
+    }}
+    #MedicationsManagementWidget QScrollBar::handle:horizontal {{
+        background: {COLOR_BORDER};
+        min-width: 20px;
+        border-radius: 5px;
+    }}
+    #MedicationsManagementWidget QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+        width: 0px;
+        background: none;
+    }}
+"""
+
 class MedicationDialog(QDialog):
-    """Dialog for adding or editing a medication"""
+    """Dialog for adding or editing a medication with modern styling"""
     
     def __init__(self, parent=None, medication_id=None):
         super().__init__(parent)
@@ -31,7 +141,6 @@ class MedicationDialog(QDialog):
         
         if medication_id:
             self.setWindowTitle("Edit Medication")
-            # Get medication data
             self.medication_data = get_medication_by_id(medication_id)
             if not self.medication_data:
                 QMessageBox.critical(self, "Error", f"Could not find medication with ID {medication_id}")
@@ -40,9 +149,36 @@ class MedicationDialog(QDialog):
         else:
             self.setWindowTitle("Add New Medication")
         
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {COLOR_SECONDARY};
+                border-radius: 8px;
+                padding: 20px;
+            }}
+            QLineEdit, QTextEdit, QDoubleSpinBox {{
+                border: 1px solid {COLOR_BORDER};
+                border-radius: 4px;
+                padding: 8px;
+                background-color: {COLOR_TEXT_LIGHT};
+            }}
+            QLineEdit:focus, QTextEdit:focus, QDoubleSpinBox:focus {{
+                border-color: {COLOR_ACCENT};
+                outline: none;
+            }}
+            QPushButton {{
+                background-color: {COLOR_ACCENT};
+                color: {COLOR_TEXT_LIGHT};
+                border-radius: 4px;
+                padding: 8px 16px;
+                border: none;
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_HOVER};
+            }}
+        """)
+        
         self.setup_ui()
         
-        # If editing, populate fields
         if self.medication_data:
             self.name_edit.setText(self.medication_data.get('name', ''))
             self.description_edit.setPlainText(self.medication_data.get('description', ''))
@@ -51,42 +187,43 @@ class MedicationDialog(QDialog):
     
     def setup_ui(self):
         layout = QFormLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
         
         # Name field
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Enter medication name")
-        layout.addRow("Name:", self.name_edit)
+        layout.addRow(QLabel("Name:"), self.name_edit)
         
         # Description field
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText("Enter medication description (e.g., dosage, form)")
-        self.description_edit.setMaximumHeight(100)
-        layout.addRow("Description:", self.description_edit)
+        self.description_edit.setMaximumHeight(120)
+        layout.addRow(QLabel("Description:"), self.description_edit)
         
         # Price field
         self.price_edit = QDoubleSpinBox()
         self.price_edit.setRange(0, 100000)
         self.price_edit.setDecimals(2)
         self.price_edit.setSingleStep(10)
-        layout.addRow("Default Price:", self.price_edit)
+        self.price_edit.setSuffix(" $")
+        layout.addRow(QLabel("Default Price:"), self.price_edit)
         
         # Active checkbox
         self.active_checkbox = QCheckBox("Active")
         self.active_checkbox.setChecked(True)
-        layout.addRow("Status:", self.active_checkbox)
+        layout.addRow(QLabel("Status:"), self.active_checkbox)
         
         # Buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
-                                           QDialogButtonBox.StandardButton.Cancel)
+                                        QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addRow(self.button_box)
         
-        self.setLayout(layout)
-        self.resize(400, 300)
+        self.resize(500, 400)
     
     def accept(self):
-        # Validate inputs
         name = self.name_edit.text().strip()
         if not name:
             QMessageBox.warning(self, "Input Error", "Medication name cannot be empty.")
@@ -98,13 +235,9 @@ class MedicationDialog(QDialog):
         
         success = False
         if self.medication_id:
-            # Update existing medication
-            success = update_medication(
-                self.medication_id, name, description, price, is_active
-            )
+            success = update_medication(self.medication_id, name, description, price, is_active)
             message = f"Medication '{name}' updated successfully!" if success else "Failed to update medication."
         else:
-            # Add new medication
             new_id = add_medication(name, description, price)
             success = bool(new_id)
             message = f"Medication '{name}' added successfully!" if success else "Failed to add medication."
@@ -115,187 +248,191 @@ class MedicationDialog(QDialog):
         else:
             QMessageBox.critical(self, "Error", message)
 
-
 class MedicationsManagementWidget(QWidget):
-    """Widget for managing medications"""
+    """Widget for managing medications with modern UI"""
     
-    medication_updated = pyqtSignal()  # Signal to notify other components of changes
+    medication_updated = pyqtSignal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("MedicationsManagementWidget")
+        self.setStyleSheet(MEDICATION_PAGE_STYLESHEET)
+        
         self.setup_ui()
         self.load_medications()
     
     def setup_ui(self):
-        main_layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+        
+        # Heading "Medicine Management"
+        heading_label = QLabel("Medicine Management")
+        heading_label.setStyleSheet(f"""
+            QLabel {{
+                font-size: 24pt;
+                font-weight: bold;
+                color: {COLOR_PRIMARY};
+                margin-bottom: 15px;
+            }}
+        """)
+        main_layout.addWidget(heading_label)
         
         # Header
-        header_layout = QHBoxLayout()
-        title_label = QLabel("Medications Management")
-        title_label.setStyleSheet("font-size: 16pt; font-weight: bold;")
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
+        header_frame = QFrame()
+        header_frame.setObjectName("HeaderFrame")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(10)
         
-        # Search box
+        search_icon = qta.icon('fa5s.search', color=COLOR_TEXT_DARK)
+        search_label = QLabel()
+        search_label.setPixmap(search_icon.pixmap(QSize(16, 16)))
+        
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Search medications...")
         self.search_edit.textChanged.connect(self.load_medications)
-        search_icon = qta.icon('fa5s.search')
-        self.search_edit.addAction(search_icon, QLineEdit.ActionPosition.LeadingPosition)
+        self.search_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.search_edit.setMinimumWidth(300)
+        
+        header_layout.addWidget(search_label)
         header_layout.addWidget(self.search_edit, 1)
+        header_layout.addStretch(1)
         
-        main_layout.addLayout(header_layout)
+        buttons = [
+            ("Add Medication", 'fa5s.plus', self.add_medication),
+            ("Edit Medication", 'fa5s.edit', self.edit_medication),
+            ("Delete Medication", 'fa5s.trash', self.delete_medication),
+            ("Refresh", 'fa5s.sync', self.load_medications)
+        ]
         
-        # Table for displaying medications
+        for text, icon_name, callback in buttons:
+            button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
+            button.clicked.connect(callback)
+            header_layout.addWidget(button)
+        
+        main_layout.addWidget(header_frame)
+        
+        # Scroll Area for Medication Table
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Medication Table
         self.medications_table = QTableWidget()
         self.medications_table.setColumnCount(5)
         self.medications_table.setHorizontalHeaderLabels(["ID", "Name", "Description", "Price", "Active"])
-        self.medications_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.medications_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.medications_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.medications_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.medications_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.medications_table.verticalHeader().setVisible(False)
-        self.medications_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.medications_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.medications_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.medications_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.medications_table.verticalHeader().setVisible(False)
+        self.medications_table.horizontalHeader().setStretchLastSection(True)
+        self.medications_table.setShowGrid(True)
         
-        main_layout.addWidget(self.medications_table)
+        self.medications_table.setColumnWidth(0, 60)
+        self.medications_table.setColumnWidth(1, 180)
+        self.medications_table.setColumnWidth(2, 180)
+        self.medications_table.setColumnWidth(3, 130)
+        self.medications_table.setColumnWidth(4, 100)
         
-        # Buttons
-        button_layout = QHBoxLayout()
+        self.medications_table.itemSelectionChanged.connect(self.update_button_states)
+        self.medications_table.itemDoubleClicked.connect(self.edit_medication)
         
-        self.add_button = QPushButton("Add Medication")
-        self.add_button.setIcon(qta.icon('fa5s.plus'))
-        self.add_button.clicked.connect(self.add_medication)
-        
-        self.edit_button = QPushButton("Edit Medication")
-        self.edit_button.setIcon(qta.icon('fa5s.edit'))
-        self.edit_button.clicked.connect(self.edit_medication)
-        
-        self.delete_button = QPushButton("Delete Medication")
-        self.delete_button.setIcon(qta.icon('fa5s.trash'))
-        self.delete_button.clicked.connect(self.delete_medication)
-        
-        self.refresh_button = QPushButton("Refresh")
-        self.refresh_button.setIcon(qta.icon('fa5s.sync'))
-        self.refresh_button.clicked.connect(self.load_medications)
-        
-        button_layout.addWidget(self.add_button)
-        button_layout.addWidget(self.edit_button)
-        button_layout.addWidget(self.delete_button)
-        button_layout.addStretch()
-        button_layout.addWidget(self.refresh_button)
-        
-        main_layout.addLayout(button_layout)
-        
-        self.setLayout(main_layout)
-    
+        scroll_area.setWidget(self.medications_table)
+        main_layout.addWidget(scroll_area)
     def load_medications(self):
-        """Load medications from database and populate table"""
         search_term = self.search_edit.text().strip()
         medications = get_all_medications(active_only=False)
         
-        # Filter by search term if provided
         if search_term:
             medications = [m for m in medications if search_term.lower() in m['name'].lower() or 
-                           (m['description'] and search_term.lower() in m['description'].lower())]
+                         (m['description'] and search_term.lower() in m['description'].lower())]
         
-        self.medications_table.setRowCount(0)  # Clear table
+        self.medications_table.setRowCount(0)
         
         for row, medication in enumerate(medications):
             self.medications_table.insertRow(row)
+            items = [
+                str(medication['medication_id']),
+                medication['name'],
+                medication['description'] if medication['description'] else "",
+                f"${medication['default_price']:.2f}",
+                "Yes" if medication['is_active'] else "No"
+            ]
             
-            # ID
-            id_item = QTableWidgetItem(str(medication['medication_id']))
-            id_item.setData(Qt.ItemDataRole.UserRole, medication['medication_id'])
-            self.medications_table.setItem(row, 0, id_item)
-            
-            # Name
-            name_item = QTableWidgetItem(medication['name'])
-            self.medications_table.setItem(row, 1, name_item)
-            
-            # Description
-            desc_item = QTableWidgetItem(medication['description'] if medication['description'] else "")
-            self.medications_table.setItem(row, 2, desc_item)
-            
-            # Price
-            price_item = QTableWidgetItem(f"${medication['default_price']:.2f}")
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.medications_table.setItem(row, 3, price_item)
-            
-            # Status
-            status_item = QTableWidgetItem("Yes" if medication['is_active'] else "No")
-            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.medications_table.setItem(row, 4, status_item)
+            for col, text in enumerate(items):
+                item = QTableWidgetItem(text)
+                if col == 0:  # ID
+                    item.setData(Qt.ItemDataRole.UserRole, medication['medication_id'])
+                if col in [3, 4]:  # Price and Status
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.medications_table.setItem(row, col, item)
+    
+    def update_button_states(self):
+        is_medication_selected = bool(self.medications_table.selectionModel().hasSelection())
+        # Assuming buttons are in header_layout, but we need to update them dynamically
+        for i in range(self.sender().parent().count() - 1, -1, -1):  # Exclude stretch
+            widget = self.sender().parent().itemAt(i).widget()
+            if isinstance(widget, QPushButton) and widget.text() in [" Edit Medication", " Delete Medication"]:
+                widget.setEnabled(is_medication_selected)
     
     def get_selected_medication_id(self):
-        """Get the ID of the selected medication"""
-        selected_items = self.medications_table.selectedItems()
-        if not selected_items:
-            return None
-        
-        selected_row = selected_items[0].row()
-        id_item = self.medications_table.item(selected_row, 0)
-        return id_item.data(Qt.ItemDataRole.UserRole)
+        selected_rows = self.medications_table.selectionModel().selectedRows()
+        if selected_rows:
+            selected_row = selected_rows[0].row()
+            id_item = self.medications_table.item(selected_row, 0)
+            if id_item:
+                return id_item.data(Qt.ItemDataRole.UserRole)
+        return None
     
     def add_medication(self):
-        """Open dialog to add a new medication"""
         dialog = MedicationDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_medications()
             self.medication_updated.emit()
     
     def edit_medication(self):
-        """Edit the selected medication"""
         medication_id = self.get_selected_medication_id()
         if not medication_id:
             QMessageBox.warning(self, "Selection Required", "Please select a medication to edit.")
             return
-        
         dialog = MedicationDialog(self, medication_id)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_medications()
             self.medication_updated.emit()
     
     def delete_medication(self):
-        """Delete the selected medication"""
         medication_id = self.get_selected_medication_id()
         if not medication_id:
             QMessageBox.warning(self, "Selection Required", "Please select a medication to delete.")
             return
         
-        # Confirm deletion
         medication = get_medication_by_id(medication_id)
         if not medication:
             QMessageBox.critical(self, "Error", "Medication not found.")
             return
         
-        confirm = QMessageBox.question(
-            self, 
-            "Confirm Deletion",
-            f"Are you sure you want to delete the medication '{medication['name']}'?\n\n"
-            "This action cannot be undone, and may fail if the medication is used in patient prescriptions.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
+        reply = QMessageBox.question(self, "Confirm Delete",
+                                   f"Are you sure you want to delete '{medication['name']}'?\n"
+                                   "This action cannot be undone.",
+                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                   QMessageBox.StandardButton.No)
         
-        if confirm == QMessageBox.StandardButton.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             success = delete_medication(medication_id)
             if success:
                 QMessageBox.information(self, "Success", f"Medication '{medication['name']}' deleted successfully!")
                 self.load_medications()
                 self.medication_updated.emit()
             else:
-                QMessageBox.critical(
-                    self, 
-                    "Error", 
-                    f"Could not delete medication '{medication['name']}'. It may be used in patient prescriptions."
-                )
-
+                QMessageBox.critical(self, "Error", "Could not delete medication. It may be in use.")
 
 if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     window = MedicationsManagementWidget()
-    window.resize(800, 600)
+    window.setWindowTitle("Medication Management System")
+    window.resize(1000, 700)
     window.show()
     sys.exit(app.exec())
