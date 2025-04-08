@@ -258,6 +258,9 @@ class MedicationsManagementWidget(QWidget):
         self.setObjectName("MedicationsManagementWidget")
         self.setStyleSheet(MEDICATION_PAGE_STYLESHEET)
         
+        # Initialize action_buttons list
+        self.action_buttons = []
+        
         self.setup_ui()
         self.load_medications()
     
@@ -310,6 +313,10 @@ class MedicationsManagementWidget(QWidget):
             button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
             button.clicked.connect(callback)
             header_layout.addWidget(button)
+            # Store the buttons that need to be enabled/disabled
+            if text in ["Edit Medication", "Delete Medication"]:
+                self.action_buttons.append(button)
+                button.setEnabled(False)  # Initially disabled
         
         main_layout.addWidget(header_frame)
         
@@ -341,6 +348,7 @@ class MedicationsManagementWidget(QWidget):
         
         scroll_area.setWidget(self.medications_table)
         main_layout.addWidget(scroll_area)
+    
     def load_medications(self):
         search_term = self.search_edit.text().strip()
         medications = get_all_medications(active_only=False)
@@ -370,12 +378,10 @@ class MedicationsManagementWidget(QWidget):
                 self.medications_table.setItem(row, col, item)
     
     def update_button_states(self):
+        """Enable/disable action buttons based on selection"""
         is_medication_selected = bool(self.medications_table.selectionModel().hasSelection())
-        # Assuming buttons are in header_layout, but we need to update them dynamically
-        for i in range(self.sender().parent().count() - 1, -1, -1):  # Exclude stretch
-            widget = self.sender().parent().itemAt(i).widget()
-            if isinstance(widget, QPushButton) and widget.text() in [" Edit Medication", " Delete Medication"]:
-                widget.setEnabled(is_medication_selected)
+        for button in self.action_buttons:
+            button.setEnabled(is_medication_selected)
     
     def get_selected_medication_id(self):
         selected_rows = self.medications_table.selectionModel().selectedRows()

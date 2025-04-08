@@ -254,6 +254,34 @@ class ServiceDialog(QDialog):
             super().accept()
         else:
             QMessageBox.critical(self, "Error", message)
+        # Validate inputs
+        name = self.name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Input Error", "Service name cannot be empty.")
+            return
+        
+        description = self.description_edit.toPlainText().strip()
+        price = self.price_edit.value()
+        is_active = self.active_checkbox.isChecked()
+        
+        success = False
+        if self.service_id:
+            # Update existing service
+            success = update_service(
+                self.service_id, name, description, price, is_active
+            )
+            message = f"Service '{name}' updated successfully!" if success else "Failed to update service."
+        else:
+            # Add new service
+            new_id = add_service(name, description, price)
+            success = bool(new_id)
+            message = f"Service '{name}' added successfully!" if success else "Failed to add service."
+        
+        if success:
+            QMessageBox.information(self, "Success", message)
+            super().accept()
+        else:
+            QMessageBox.critical(self, "Error", message)
 
 class ServicesManagementWidget(QWidget):
     """Widget for managing dental services"""
@@ -264,6 +292,9 @@ class ServicesManagementWidget(QWidget):
         super().__init__(parent)
         self.setObjectName("ServicesManagementWidget")
         self.setStyleSheet(SERVICE_PAGE_STYLESHEET)
+        
+        # Initialize action_buttons list
+        self.action_buttons = []
         
         self.setup_ui()
         self.load_services()
@@ -317,6 +348,10 @@ class ServicesManagementWidget(QWidget):
             button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
             button.clicked.connect(callback)
             header_layout.addWidget(button)
+            # Store the buttons that need to be enabled/disabled
+            if text in ["Edit Service", "Delete Service"]:
+                self.action_buttons.append(button)
+                button.setEnabled(False)  # Initially disabled
         
         main_layout.addWidget(header_frame)
         
@@ -388,11 +423,10 @@ class ServicesManagementWidget(QWidget):
             self.services_table.setItem(row, 4, status_item)
     
     def update_button_states(self):
+        """Enable/disable action buttons based on selection"""
         is_service_selected = bool(self.services_table.selectionModel().hasSelection())
-        for i in range(self.sender().parent().count() - 1, -1, -1):  # Exclude stretch
-            widget = self.sender().parent().itemAt(i).widget()
-            if isinstance(widget, QPushButton) and widget.text() in [" Edit Service", " Delete Service"]:
-                widget.setEnabled(is_service_selected)
+        for button in self.action_buttons:
+            button.setEnabled(is_service_selected)
     
     def get_selected_service_id(self):
         """Get the ID of the selected service"""
@@ -456,8 +490,6 @@ class ServicesManagementWidget(QWidget):
                     "Error", 
                     f"Could not delete service '{service['name']}'. It may be used in patient visits."
                 )
-
-
 if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
