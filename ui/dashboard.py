@@ -13,7 +13,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from ui.main_window import PatientListPage
 from database.schema import initialize_database
-from ui.inventory_management import InventoryManagementWindow  # Import the inventory management
+from ui.inventory_management import InventoryManagementWindow
+from ui.due import DuePatientsWidget  # Import the DuePatientsWidget
 
 CLINIC_NAME = "Salman Dental Clinic"
 LOGO_FILENAME = "logo.png"
@@ -115,8 +116,8 @@ class DashboardWindow(QMainWindow):
 
         self.nav_buttons = {}
         self.home_button = self.add_nav_button(sidebar_layout, "HOME", 'fa5s.home', 0)
-        self.patients_button = self.add_nav_button(sidebar_layout, "PATIENTS", 'fa5s.user', 1)
-        self.inventory_button = self.add_nav_button(sidebar_layout, "INVENTORY", 'fa5s.box', 2)  # New Inventory button
+        self.due_patients_button = self.add_nav_button(sidebar_layout, "DUE PATIENTS", 'fa5s.money-bill-alt', 1)  # New button for Due Patients
+        self.inventory_button = self.add_nav_button(sidebar_layout, "INVENTORY", 'fa5s.box', 2)  # Inventory button
         self.settings_button = self.add_nav_button(sidebar_layout, "SETTINGS", 'fa5s.cog', 3)
 
         sidebar_layout.addStretch(1)
@@ -128,15 +129,13 @@ class DashboardWindow(QMainWindow):
         self.home_page = None
         self.init_home_page()
 
-        # Remove Appointments page and add Inventory page
-        placeholder_patients = QLabel("Patients Page")
-        placeholder_patients.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder_patients.setStyleSheet("font-size: 24px;")
-        self.content_stack.addWidget(placeholder_patients)
+        # Add Due Patients widget
+        self.due_patients_page = DuePatientsWidget(self)  # Create instance of DuePatientsWidget
+        self.content_stack.addWidget(self.due_patients_page)
 
         # Create and add Inventory management UI
         self.inventory_page = InventoryManagementWindow()
-        self.inventory_widget = self.inventory_page.get_central_widget()  # Get the central widget from InventoryManagementWindow
+        self.inventory_widget = self.inventory_page.get_central_widget()
         self.content_stack.addWidget(self.inventory_widget)
 
         placeholder_settings = QLabel("Settings Page")
