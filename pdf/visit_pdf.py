@@ -93,7 +93,7 @@ def generate_visit_pdf(visit_data, patient_data, services=None, prescriptions=No
 
     # --- First Page Content ---
     # Visit Info (Right-aligned)
-    visit_number = get_data(visit_data, 'visit_id', 'N/A')
+    visit_number = get_data(visit_data, 'visit_number', 'N/A')
     visit_date = get_data(visit_data, 'visit_date', '')
     try:
         visit_date = datetime.strptime(
@@ -113,7 +113,7 @@ def generate_visit_pdf(visit_data, patient_data, services=None, prescriptions=No
     # Patient Details (including Patient ID, Date, Visit No, and Age)
     patient_id = get_data(patient_data, 'patient_id', 'N/A')
     patient_name = get_data(patient_data, 'name', 'N/A')
-    patient_sex = get_data(patient_data, 'sex', '')
+    patient_sex = get_data(patient_data, 'gender', '')
     patient_age = get_data(patient_data, 'age', '')
     patient_father = get_data(patient_data, 'father_name', '')
     patient_phone = get_data(patient_data, 'phone_number', '')
