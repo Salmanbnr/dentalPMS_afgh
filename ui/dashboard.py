@@ -13,6 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from ui.main_window import PatientListPage
 from database.schema import initialize_database
+from ui.inventory_management import InventoryManagementWindow  # Import the inventory management
 
 CLINIC_NAME = "Salman Dental Clinic"
 LOGO_FILENAME = "logo.png"
@@ -60,7 +61,11 @@ DASHBOARD_STYLESHEET = f"""
         font-weight: bold;
     }}
     #ContentStackWidget {{
-        background-color: {COLOR_SECONDARY};
+        background-color: transparent; /* Allow child widgets to handle their own background */
+    }}
+    QTabWidget, QTabBar::tab {{
+        background-color: transparent; /* Ensure no interference with inventory tabs */
+        border: none;
     }}
 """
 
@@ -110,8 +115,8 @@ class DashboardWindow(QMainWindow):
 
         self.nav_buttons = {}
         self.home_button = self.add_nav_button(sidebar_layout, "HOME", 'fa5s.home', 0)
-        self.appointments_button = self.add_nav_button(sidebar_layout, "APPOINTMENTS", 'fa5s.calendar-alt', 1)
-        self.patients_button = self.add_nav_button(sidebar_layout, "PATIENTS", 'fa5s.user', 2)
+        self.patients_button = self.add_nav_button(sidebar_layout, "PATIENTS", 'fa5s.user', 1)
+        self.inventory_button = self.add_nav_button(sidebar_layout, "INVENTORY", 'fa5s.box', 2)  # New Inventory button
         self.settings_button = self.add_nav_button(sidebar_layout, "SETTINGS", 'fa5s.cog', 3)
 
         sidebar_layout.addStretch(1)
@@ -123,15 +128,16 @@ class DashboardWindow(QMainWindow):
         self.home_page = None
         self.init_home_page()
 
-        placeholder_appointments = QLabel("Appointments Page")
-        placeholder_appointments.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder_appointments.setStyleSheet("font-size: 24px;")
-        self.content_stack.addWidget(placeholder_appointments)
-
+        # Remove Appointments page and add Inventory page
         placeholder_patients = QLabel("Patients Page")
         placeholder_patients.setAlignment(Qt.AlignmentFlag.AlignCenter)
         placeholder_patients.setStyleSheet("font-size: 24px;")
         self.content_stack.addWidget(placeholder_patients)
+
+        # Create and add Inventory management UI
+        self.inventory_page = InventoryManagementWindow()
+        self.inventory_widget = self.inventory_page.get_central_widget()  # Get the central widget from InventoryManagementWindow
+        self.content_stack.addWidget(self.inventory_widget)
 
         placeholder_settings = QLabel("Settings Page")
         placeholder_settings.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -167,14 +173,6 @@ class DashboardWindow(QMainWindow):
         return button
 
     def switch_tab(self, checked, index, button):
-        # Always handle the home button click specially, even if already active
-        if index == 0 and button == self.home_button:
-            self.init_home_page()  # Reload the home page
-            self.home_button.setChecked(True)
-            self.current_button = self.home_button
-            return
-
-        # For other tabs, or when switching from another tab
         if not checked:
             if self.current_button == button:
                 button.setChecked(True)
@@ -193,7 +191,7 @@ class DashboardWindow(QMainWindow):
                 self.current_button.setChecked(True)
 
     def show_home_page(self):
-        self.init_home_page()  # This now refreshes the home page
+        self.init_home_page()
         self.home_button.setChecked(True)
         self.current_button = self.home_button
 

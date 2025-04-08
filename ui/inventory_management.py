@@ -8,7 +8,7 @@ sys.path.insert(0, str(project_root))
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QVBoxLayout, QWidget,
-    QStatusBar,QLabel
+    QStatusBar, QLabel
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
@@ -28,31 +28,56 @@ COLOR_BORDER = "#bdc3c7"
 COLOR_HOVER = "#4a6fa5"
 
 INVENTORY_STYLESHEET = f"""
-    QMainWindow {{
+    QMainWindow, QWidget {{
         background-color: {COLOR_SECONDARY};
     }}
     QTabWidget {{
         border: none;
         background-color: {COLOR_SECONDARY};
+        padding: 5px;
     }}
     QTabBar::tab {{
         background-color: {COLOR_SECONDARY};
-        border: 1px solid {COLOR_BORDER};
+        border: 2px solid {COLOR_BORDER};
         border-bottom: none;
-        border-top-left-radius: 4px;
-        border-top-right-radius: 4px;
-        padding: 10px 20px;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        padding: 15px 30px;
         color: {COLOR_TEXT_DARK};
-        margin-right: 2px;
+        margin-right: 4px;
+        min-width: 150px;
+        font-size: 12pt;
+        font-weight: 600;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease; /* Smooth transition for hover and selection */
     }}
-    QTabBar::tab:selected, QTabBar::tab:hover {{
-        background-color: {COLOR_PRIMARY};
+    QTabBar::tab:selected {{
+        background-color: {COLOR_ACCENT};
         color: {COLOR_TEXT_LIGHT};
+        border-bottom: 3px solid {COLOR_PRIMARY};
+        font-weight: bold;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+        border: 2px solid {COLOR_PRIMARY};
+    }}
+    QTabBar::tab:hover {{
+        background-color: {COLOR_HOVER};
+        color: {COLOR_TEXT_LIGHT};
+        border: 2px solid {COLOR_ACCENT};
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+    }}
+    QTabWidget::pane {{
+        border: 2px solid {COLOR_BORDER};
+        border-radius: 6px;
+        background-color: {COLOR_SECONDARY};
+        padding: 15px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
     }}
     QStatusBar {{
         background-color: {COLOR_PRIMARY};
         color: {COLOR_TEXT_LIGHT};
-        border-top: 1px solid {COLOR_BORDER};
+        border-top: 2px solid {COLOR_BORDER};
+        padding: 8px;
+        font-size: 10pt;
     }}
 """
 
@@ -80,20 +105,17 @@ class InventoryManagementWindow(QMainWindow):
         main_layout.setContentsMargins(15, 15, 15, 15)
         main_layout.setSpacing(15)
 
-        
-        
-
         # Tab widget for switching between services and medications
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet("QTabWidget { border: none; }")
 
-        # Services tab
+        # Services tab with icon
         self.services_widget = ServicesManagementWidget()
-        self.tab_widget.addTab(self.services_widget, "Services")
+        self.tab_widget.addTab(self.services_widget, qta.icon('fa5s.cogs', color=COLOR_TEXT_DARK), "Services")
 
-        # Medications tab
+        # Medications tab with icon
         self.medications_widget = MedicationsManagementWidget()
-        self.tab_widget.addTab(self.medications_widget, "Medications")
+        self.tab_widget.addTab(self.medications_widget, qta.icon('fa5s.pills', color=COLOR_TEXT_DARK), "Medications")
 
         main_layout.addWidget(self.tab_widget)
 
@@ -112,6 +134,12 @@ class InventoryManagementWindow(QMainWindow):
         """)
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
+
+    def get_central_widget(self):
+        """Return the central widget for embedding in another window, with its stylesheet."""
+        widget = self.centralWidget()
+        widget.setStyleSheet(INVENTORY_STYLESHEET)  # Ensure the widget retains its stylesheet
+        return widget
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
