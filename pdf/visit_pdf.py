@@ -85,8 +85,8 @@ def generate_visit_pdf(visit_data, patient_data, services=None, prescriptions=No
         pagesize=A4,
         leftMargin=15*mm,
         rightMargin=15*mm,
-        topMargin=73*mm,
-        bottomMargin=30*mm
+        topMargin=50*mm,
+        bottomMargin=22*mm
     )
 
     story = []
