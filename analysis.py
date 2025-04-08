@@ -1,5 +1,4 @@
-# ui/analysis.py
-from PyQt6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QStatusBar
+from PyQt6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QStatusBar, QScrollArea
 from PyQt6.QtCore import Qt
 import qtawesome as qta
 from ui.analysis.patient_analysis import PatientAnalysis
@@ -63,6 +62,25 @@ ANALYSIS_WINDOW_STYLESHEET = f"""
         padding: 8px;
         font-size: 10pt;
     }}
+    QScrollArea {{
+        border: none;
+        background-color: {COLOR_SECONDARY};
+    }}
+    QScrollBar:vertical {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        width: 12px;
+        margin: 0px 0px 0px 0px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: {COLOR_BORDER};
+        min-height: 20px;
+        border-radius: 6px;
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        border: none;
+        background: none;
+    }}
 """
 
 class AnalysisWindow(QMainWindow):
@@ -76,29 +94,26 @@ class AnalysisWindow(QMainWindow):
         tab_widget = QTabWidget()
         tab_widget.setStyleSheet("QTabWidget { border: none; }")
 
-        # Patient Analysis Tab
-        patient_tab = PatientAnalysis()
-        tab_widget.addTab(patient_tab, qta.icon('fa5s.user', color=COLOR_TEXT_DARK), "Patient Analytics")
+        # Add Tabs with Scroll Areas
+        tabs = [
+            ("Patient Analytics", PatientAnalysis(), qta.icon('fa5s.user', color=COLOR_TEXT_DARK)),
+            ("Service Analytics", ServiceAnalysis(), qta.icon('fa5s.tooth', color=COLOR_TEXT_DARK)),
+            ("Medication Analytics", MedicationAnalysis(), qta.icon('fa5s.pills', color=COLOR_TEXT_DARK)),
+            ("Financial Analytics", FinancialAnalysis(), qta.icon('fa5s.dollar-sign', color=COLOR_TEXT_DARK)),
+            ("Operational Analytics", OperationalAnalysis(), qta.icon('fa5s.calendar', color=COLOR_TEXT_DARK)),
+            ("Data Quality", DataQualityAnalysis(), qta.icon('fa5s.database', color=COLOR_TEXT_DARK)),
+        ]
 
-        # Service Analysis Tab
-        service_tab = ServiceAnalysis()
-        tab_widget.addTab(service_tab, qta.icon('fa5s.tooth', color=COLOR_TEXT_DARK), "Service Analytics")
-
-        # Medication Analysis Tab
-        medication_tab = MedicationAnalysis()
-        tab_widget.addTab(medication_tab, qta.icon('fa5s.pills', color=COLOR_TEXT_DARK), "Medication Analytics")
-
-        # Financial Analysis Tab
-        financial_tab = FinancialAnalysis()
-        tab_widget.addTab(financial_tab, qta.icon('fa5s.dollar-sign', color=COLOR_TEXT_DARK), "Financial Analytics")
-
-        # Operational Analysis Tab
-        operational_tab = OperationalAnalysis()
-        tab_widget.addTab(operational_tab, qta.icon('fa5s.calendar', color=COLOR_TEXT_DARK), "Operational Analytics")
-
-        # Data Quality Tab
-        data_quality_tab = DataQualityAnalysis()
-        tab_widget.addTab(data_quality_tab, qta.icon('fa5s.database', color=COLOR_TEXT_DARK), "Data Quality")
+        for title, widget, icon in tabs:
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setWidget(widget)
+            scroll_area.setStyleSheet("""
+                QScrollArea {
+                    border: none;
+                }
+            """)
+            tab_widget.addTab(scroll_area, icon, title)
 
         # Set Central Widget
         central_widget = QWidget()
@@ -111,9 +126,6 @@ class AnalysisWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Analysis Dashboard Ready")
-
-    def wheelEvent(self, event):
-        event.ignore()
 
 if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
