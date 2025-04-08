@@ -1,3 +1,12 @@
+from ui.medication.medication_ui import MedicationsManagementWidget
+from ui.services.services_ui import ServicesManagementWidget
+import qtawesome as qta
+from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QTabWidget, QVBoxLayout, QWidget,
+    QStatusBar, QLabel
+)
 import sys
 import os
 from pathlib import Path
@@ -6,17 +15,8 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTabWidget, QVBoxLayout, QWidget,
-    QStatusBar, QLabel
-)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
-import qtawesome as qta
 
 # Import our modules
-from ui.services.services_ui import ServicesManagementWidget
-from ui.medication.medication_ui import MedicationsManagementWidget
 
 # Color constants (reused from previous UIs)
 COLOR_PRIMARY = "#2c3e50"
@@ -48,7 +48,7 @@ INVENTORY_STYLESHEET = f"""
         min-width: 150px;
         font-size: 12pt;
         font-weight: 600;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        
         transition: all 0.3s ease; /* Smooth transition for hover and selection */
     }}
     QTabBar::tab:selected {{
@@ -56,21 +56,21 @@ INVENTORY_STYLESHEET = f"""
         color: {COLOR_TEXT_LIGHT};
         border-bottom: 3px solid {COLOR_PRIMARY};
         font-weight: bold;
-        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+        
         border: 2px solid {COLOR_PRIMARY};
     }}
     QTabBar::tab:hover {{
         background-color: {COLOR_HOVER};
         color: {COLOR_TEXT_LIGHT};
         border: 2px solid {COLOR_ACCENT};
-        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+        
     }}
     QTabWidget::pane {{
         border: 2px solid {COLOR_BORDER};
         border-radius: 6px;
         background-color: {COLOR_SECONDARY};
         padding: 15px;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+      
     }}
     QStatusBar {{
         background-color: {COLOR_PRIMARY};
@@ -80,6 +80,7 @@ INVENTORY_STYLESHEET = f"""
         font-size: 10pt;
     }}
 """
+
 
 class InventoryManagementWindow(QMainWindow):
     """Main window for managing services and medications"""
@@ -111,11 +112,13 @@ class InventoryManagementWindow(QMainWindow):
 
         # Services tab with icon
         self.services_widget = ServicesManagementWidget()
-        self.tab_widget.addTab(self.services_widget, qta.icon('fa5s.cogs', color=COLOR_TEXT_DARK), "Services")
+        self.tab_widget.addTab(self.services_widget, qta.icon(
+            'fa5s.cogs', color=COLOR_TEXT_DARK), "Services")
 
         # Medications tab with icon
         self.medications_widget = MedicationsManagementWidget()
-        self.tab_widget.addTab(self.medications_widget, qta.icon('fa5s.pills', color=COLOR_TEXT_DARK), "Medications")
+        self.tab_widget.addTab(self.medications_widget, qta.icon(
+            'fa5s.pills', color=COLOR_TEXT_DARK), "Medications")
 
         main_layout.addWidget(self.tab_widget)
 
@@ -138,8 +141,10 @@ class InventoryManagementWindow(QMainWindow):
     def get_central_widget(self):
         """Return the central widget for embedding in another window, with its stylesheet."""
         widget = self.centralWidget()
-        widget.setStyleSheet(INVENTORY_STYLESHEET)  # Ensure the widget retains its stylesheet
+        # Ensure the widget retains its stylesheet
+        widget.setStyleSheet(INVENTORY_STYLESHEET)
         return widget
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

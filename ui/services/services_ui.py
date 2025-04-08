@@ -208,7 +208,7 @@ class ServiceDialog(QDialog):
         self.price_edit.setRange(0, 1000000)
         self.price_edit.setDecimals(2)
         self.price_edit.setSingleStep(10)
-        self.price_edit.setSuffix(" $")
+        
         layout.addRow(QLabel("Default Price:"), self.price_edit)
         
         # Active checkbox
@@ -244,37 +244,9 @@ class ServiceDialog(QDialog):
             )
             message = f"Service '{name}' updated successfully!" if success else "Failed to update service."
         else:
-            # Add new service
-            new_id = add_service(name, description, price)
-            success = bool(new_id)
-            message = f"Service '{name}' added successfully!" if success else "Failed to add service."
-        
-        if success:
-            QMessageBox.information(self, "Success", message)
-            super().accept()
-        else:
-            QMessageBox.critical(self, "Error", message)
-        # Validate inputs
-        name = self.name_edit.text().strip()
-        if not name:
-            QMessageBox.warning(self, "Input Error", "Service name cannot be empty.")
-            return
-        
-        description = self.description_edit.toPlainText().strip()
-        price = self.price_edit.value()
-        is_active = self.active_checkbox.isChecked()
-        
-        success = False
-        if self.service_id:
-            # Update existing service
-            success = update_service(
-                self.service_id, name, description, price, is_active
-            )
-            message = f"Service '{name}' updated successfully!" if success else "Failed to update service."
-        else:
-            # Add new service
-            new_id = add_service(name, description, price)
-            success = bool(new_id)
+            # Add new service (assuming add_service doesn't take is_active)
+            new_id = add_service(name, description, price)  # Removed is_active
+            success = new_id is not None  # Check if new_id is not None
             message = f"Service '{name}' added successfully!" if success else "Failed to add service."
         
         if success:
@@ -372,11 +344,12 @@ class ServicesManagementWidget(QWidget):
         self.services_table.horizontalHeader().setStretchLastSection(True)
         self.services_table.setShowGrid(True)
         
-        self.services_table.setColumnWidth(0, 60)
-        self.services_table.setColumnWidth(1, 180)
-        self.services_table.setColumnWidth(2, 180)
-        self.services_table.setColumnWidth(3, 130)
-        self.services_table.setColumnWidth(4, 100)
+        # Adjusted column widths: even narrower Active, wider Description
+        self.services_table.setColumnWidth(0, 60)  # ID
+        self.services_table.setColumnWidth(1, 180)  # Name
+        self.services_table.setColumnWidth(2, 500)  # Description (increased to 400)
+        self.services_table.setColumnWidth(3, 80)   # Price (unchanged)
+        self.services_table.setColumnWidth(4, 25)   # Active (narrower to 50)
         
         self.services_table.itemSelectionChanged.connect(self.update_button_states)
         self.services_table.itemDoubleClicked.connect(self.edit_service)
@@ -490,6 +463,7 @@ class ServicesManagementWidget(QWidget):
                     "Error", 
                     f"Could not delete service '{service['name']}'. It may be used in patient visits."
                 )
+
 if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)

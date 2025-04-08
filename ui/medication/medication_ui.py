@@ -206,7 +206,7 @@ class MedicationDialog(QDialog):
         self.price_edit.setRange(0, 100000)
         self.price_edit.setDecimals(2)
         self.price_edit.setSingleStep(10)
-        self.price_edit.setSuffix(" $")
+        
         layout.addRow(QLabel("Default Price:"), self.price_edit)
         
         # Active checkbox
@@ -339,9 +339,9 @@ class MedicationsManagementWidget(QWidget):
         
         self.medications_table.setColumnWidth(0, 60)
         self.medications_table.setColumnWidth(1, 180)
-        self.medications_table.setColumnWidth(2, 180)
-        self.medications_table.setColumnWidth(3, 130)
-        self.medications_table.setColumnWidth(4, 100)
+        self.medications_table.setColumnWidth(2, 500)
+        self.medications_table.setColumnWidth(3, 80)
+        self.medications_table.setColumnWidth(4, 25)
         
         self.medications_table.itemSelectionChanged.connect(self.update_button_states)
         self.medications_table.itemDoubleClicked.connect(self.edit_medication)
@@ -365,7 +365,7 @@ class MedicationsManagementWidget(QWidget):
                 str(medication['medication_id']),
                 medication['name'],
                 medication['description'] if medication['description'] else "",
-                f"${medication['default_price']:.2f}",
+                f"{medication['default_price']:.2f}",
                 "Yes" if medication['is_active'] else "No"
             ]
             
