@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QPushButton, QMessageBox,
     QFormLayout, QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
-    QDateEdit, QAbstractItemView, QLineEdit, QScrollArea, QApplication, QSpacerItem, QSizePolicy,QGridLayout
+    QDateEdit, QAbstractItemView, QLineEdit, QScrollArea, QApplication, QSpacerItem, QSizePolicy,QGridLayout,QCompleter
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QDate,QSize
 from PyQt6.QtGui import QFont, QColor
@@ -245,7 +245,17 @@ class AddEditVisitWindow(QWidget):
         add_layout.setSpacing(10)
 
         self.service_combo = QComboBox()
+        self.service_combo.setEditable(True)  # Make the combo box editable
         self.service_combo.addItems(sorted(self.available_services.keys()))
+        self.service_combo.setCurrentIndex(-1)  # No initial selection
+
+        # Set up completer for search functionality
+        completer = QCompleter(sorted(self.available_services.keys()))
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.service_combo.setCompleter(completer)
+
         self.service_combo.currentIndexChanged.connect(self.update_service_price)
 
         self.service_tooth_input = QLineEdit()
@@ -299,7 +309,17 @@ class AddEditVisitWindow(QWidget):
         add_layout.setSpacing(10)
 
         self.med_combo = QComboBox()
+        self.med_combo.setEditable(True)  # Make the combo box editable
         self.med_combo.addItems(sorted(self.available_medications.keys()))
+        self.med_combo.setCurrentIndex(-1)  # No initial selection
+
+        # Set up completer for search functionality
+        completer = QCompleter(sorted(self.available_medications.keys()))
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.med_combo.setCompleter(completer)
+
         self.med_combo.currentIndexChanged.connect(self.update_med_price)
 
         self.med_qty_input = QLineEdit()
@@ -343,6 +363,7 @@ class AddEditVisitWindow(QWidget):
         layout.addLayout(add_layout)
         layout.addWidget(self.prescriptions_table)
         self.content_layout.addWidget(prescriptions_group)
+
     def create_payment_summary_section(self):
         """Section for displaying the financial summary including total, paid and due amounts."""
         payment_group = QGroupBox("Payment Summary")
