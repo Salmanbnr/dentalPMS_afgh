@@ -1,20 +1,92 @@
 # ui/analysis/patient_analysis.py
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QScrollArea
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QScrollArea, QLabel
 from PyQt6.QtCore import Qt
 import pyqtgraph as pg
 import qtawesome as qta
 from model.analysis_model import get_patient_demographics, get_patient_visit_frequency, get_inactive_patients, get_single_visit_patients
 import pandas as pd
 
+# Color constants
+COLOR_PRIMARY = "#2c3e50"
+COLOR_SECONDARY = "#ecf0f1"
+COLOR_ACCENT = "#3498db"
+COLOR_TEXT_LIGHT = "#ffffff"
+COLOR_TEXT_DARK = "#34495e"
+COLOR_BORDER = "#bdc3c7"
+COLOR_HOVER = "#4a6fa5"
+
+ANALYSIS_STYLESHEET = f"""
+    QWidget {{
+        background-color: {COLOR_SECONDARY};
+        padding: 15px;
+    }}
+    QTableWidget {{
+        border: 1px solid {COLOR_BORDER};
+        gridline-color: {COLOR_BORDER};
+        font-size: 10pt;
+        background-color: white;
+    }}
+    QTableWidget::item {{
+        padding: 5px;
+        color: {COLOR_TEXT_DARK};
+    }}
+    QTableWidget::item:selected {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+    }}
+    QHeaderView::section {{
+        background-color: {COLOR_PRIMARY};
+        color: {COLOR_TEXT_LIGHT};
+        padding: 6px;
+        border: none;
+        font-weight: bold;
+    }}
+    QScrollArea {{
+        border: none;
+        background-color: {COLOR_SECONDARY};
+    }}
+    QScrollBar:vertical {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        width: 10px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: {COLOR_BORDER};
+        min-height: 20px;
+        border-radius: 5px;
+    }}
+    QScrollBar:horizontal {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        height: 10px;
+    }}
+    QScrollBar::handle:horizontal {{
+        background: {COLOR_BORDER};
+        min-width: 20px;
+        border-radius: 5px;
+    }}
+    QLabel {{
+        font-size: 18pt;
+        font-weight: bold;
+        color: {COLOR_PRIMARY};
+        margin-bottom: 10px;
+    }}
+"""
+
 class PatientAnalysis(QWidget):
     def __init__(self):
         super().__init__()
+        self.setStyleSheet(ANALYSIS_STYLESHEET)
         self.init_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout()
         main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Title
+        title = QLabel("Patient Analytics")
+        main_layout.addWidget(title)
 
         # Demographics Section
         demographics_widget = QWidget()
@@ -22,16 +94,18 @@ class PatientAnalysis(QWidget):
         demographics_widget.setLayout(demographics_layout)
         
         gender_plot = pg.PlotWidget()
-        gender_plot.setTitle("Gender Distribution", color="#ffffff", size="12pt")
-        gender_plot.setBackground("#1e1e2f")
-        gender_plot.getAxis('bottom').setPen(pg.mkPen("#ffffff"))
-        gender_plot.getAxis('left').setPen(pg.mkPen("#ffffff"))
+        gender_plot.setTitle("Gender Distribution", color=COLOR_TEXT_LIGHT, size="12pt")
+        gender_plot.setBackground(COLOR_SECONDARY)
+        gender_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        gender_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        gender_plot.setStyleSheet(f"border: 1px solid {COLOR_BORDER}; border-radius: 4px;")
         
         age_plot = pg.PlotWidget()
-        age_plot.setTitle("Age Distribution", color="#ffffff", size="12pt")
-        age_plot.setBackground("#1e1e2f")
-        age_plot.getAxis('bottom').setPen(pg.mkPen("#ffffff"))
-        age_plot.getAxis('left').setPen(pg.mkPen("#ffffff"))
+        age_plot.setTitle("Age Distribution", color=COLOR_TEXT_LIGHT, size="12pt")
+        age_plot.setBackground(COLOR_SECONDARY)
+        age_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        age_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
+        age_plot.setStyleSheet(f"border: 1px solid {COLOR_BORDER}; border-radius: 4px;")
         
         demographics_layout.addWidget(gender_plot)
         demographics_layout.addWidget(age_plot)
@@ -45,21 +119,6 @@ class PatientAnalysis(QWidget):
         
         # Visit Frequency Table
         visit_table = QTableWidget()
-        visit_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #2d2d44;
-                color: #ffffff;
-                border: 1px solid #3e3e5f;
-                border-radius: 5px;
-            }
-            QTableWidget::item { padding: 8px; }
-            QHeaderView::section {
-                background-color: #3e3e5f;
-                padding: 8px;
-                border: none;
-                color: #ffffff;
-            }
-        """)
         visit_table.setMinimumHeight(250)
         
         scroll_visits = QScrollArea()
@@ -71,21 +130,6 @@ class PatientAnalysis(QWidget):
         
         # Inactive Patients Table
         inactive_table = QTableWidget()
-        inactive_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #2d2d44;
-                color: #ffffff;
-                border: 1px solid #3e3e5f;
-                border-radius: 5px;
-            }
-            QTableWidget::item { padding: 8px; }
-            QHeaderView::section {
-                background-color: #3e3e5f;
-                padding: 8px;
-                border: none;
-                color: #ffffff;
-            }
-        """)
         inactive_table.setMinimumHeight(250)
         
         scroll_inactive = QScrollArea()
@@ -108,11 +152,11 @@ class PatientAnalysis(QWidget):
         gender_df = pd.DataFrame(data['gender'], columns=['gender', 'count'])
         age_df = pd.DataFrame(data['age'], columns=['age_group', 'count'])
         
-        gender_bar = pg.BarGraphItem(x=range(len(gender_df)), height=gender_df['count'], width=0.6, brush='#42a5f5')
+        gender_bar = pg.BarGraphItem(x=range(len(gender_df)), height=gender_df['count'], width=0.6, brush=COLOR_ACCENT)
         gender_plot.addItem(gender_bar)
         gender_plot.getAxis('bottom').setTicks([[(i, g) for i, g in enumerate(gender_df['gender'])]])
         
-        age_bar = pg.BarGraphItem(x=range(len(age_df)), height=age_df['count'], width=0.6, brush='#66bb6a')
+        age_bar = pg.BarGraphItem(x=range(len(age_df)), height=age_df['count'], width=0.6, brush=COLOR_ACCENT)
         age_plot.addItem(age_bar)
         age_plot.getAxis('bottom').setTicks([[(i, a) for i, a in enumerate(age_df['age_group'])]])
         
@@ -148,5 +192,5 @@ class PatientAnalysis(QWidget):
         
         table.resizeColumnsToContents()
 
-    def wheelEvent(self, event):
-        event.ignore()
+    # def wheelEvent(self, event):
+    #     event.ignore()

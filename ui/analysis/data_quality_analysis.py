@@ -1,35 +1,91 @@
 # ui/analysis/data_quality_analysis.py
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QScrollArea
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QScrollArea, QLabel
 from PyQt6.QtCore import Qt
 from model.analysis_model import get_data_quality_issues
+
+COLOR_PRIMARY = "#2c3e50"
+COLOR_SECONDARY = "#ecf0f1"
+COLOR_ACCENT = "#3498db"
+COLOR_TEXT_LIGHT = "#ffffff"
+COLOR_TEXT_DARK = "#34495e"
+COLOR_BORDER = "#bdc3c7"
+COLOR_HOVER = "#4a6fa5"
+
+ANALYSIS_STYLESHEET = f"""
+    QWidget {{
+        background-color: {COLOR_SECONDARY};
+        padding: 15px;
+    }}
+    QTableWidget {{
+        border: 1px solid {COLOR_BORDER};
+        gridline-color: {COLOR_BORDER};
+        font-size: 10pt;
+        background-color: white;
+    }}
+    QTableWidget::item {{
+        padding: 5px;
+        color: {COLOR_TEXT_DARK};
+    }}
+    QTableWidget::item:selected {{
+        background-color: {COLOR_ACCENT};
+        color: {COLOR_TEXT_LIGHT};
+    }}
+    QHeaderView::section {{
+        background-color: {COLOR_PRIMARY};
+        color: {COLOR_TEXT_LIGHT};
+        padding: 6px;
+        border: none;
+        font-weight: bold;
+    }}
+    QScrollArea {{
+        border: none;
+        background-color: {COLOR_SECONDARY};
+    }}
+    QScrollBar:vertical {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        width: 10px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: {COLOR_BORDER};
+        min-height: 20px;
+        border-radius: 5px;
+    }}
+    QScrollBar:horizontal {{
+        border: none;
+        background: {COLOR_SECONDARY};
+        height: 10px;
+    }}
+    QScrollBar::handle:horizontal {{
+        background: {COLOR_BORDER};
+        min-width: 20px;
+        border-radius: 5px;
+    }}
+    QLabel {{
+        font-size: 18pt;
+        font-weight: bold;
+        color: {COLOR_PRIMARY};
+        margin-bottom: 10px;
+    }}
+"""
 
 class DataQualityAnalysis(QWidget):
     def __init__(self):
         super().__init__()
+        self.setStyleSheet(ANALYSIS_STYLESHEET)
         self.init_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout()
         main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Title
+        title = QLabel("Data Quality Analytics")
+        main_layout.addWidget(title)
 
         # Duplicate Patients Table
         duplicate_table = QTableWidget()
-        duplicate_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #2d2d44;
-                color: #ffffff;
-                border: 1px solid #3e3e5f;
-                border-radius: 5px;
-            }
-            QTableWidget::item { padding: 8px; }
-            QHeaderView::section {
-                background-color: #3e3e5f;
-                padding: 8px;
-                border: none;
-                color: #ffffff;
-            }
-        """)
         duplicate_table.setMinimumHeight(250)
         
         scroll_duplicate = QScrollArea()
@@ -41,21 +97,6 @@ class DataQualityAnalysis(QWidget):
         
         # Visits Without Items Table
         visits_table = QTableWidget()
-        visits_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #2d2d44;
-                color: #ffffff;
-                border: 1px solid #3e3e5f;
-                border-radius: 5px;
-            }
-            QTableWidget::item { padding: 8px; }
-            QHeaderView::section {
-                background-color: #3e3e5f;
-                padding: 8px;
-                border: none;
-                color: #ffffff;
-            }
-        """)
         visits_table.setMinimumHeight(250)
         
         scroll_visits = QScrollArea()
