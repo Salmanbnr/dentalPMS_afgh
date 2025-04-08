@@ -370,22 +370,44 @@ def remove_prescription_from_visit(visit_prescription_id):
 
 # --- Debt Management ---
 
-def get_patients_with_debt():
-    """Retrieves patients with total outstanding debt > 0. Returns list of dicts."""
-    query = """
+def get_patients_with_debt(search_term=""):
+    """
+    Retrieves patients with total outstanding debt > 0.
+    Includes father_name, address, search functionality,
+    and the count of visits with due amounts.
+    Returns list of dicts.
+    """
+    # *** MODIFIED QUERY ***
+    base_query = """
         SELECT
             p.patient_id,
             p.name,
+            p.father_name,
             p.phone_number,
-            SUM(v.due_amount) as total_due
+            p.address,
+            SUM(v.due_amount) as total_due,
+            COUNT(DISTINCT v.visit_id) as due_visits_count -- Added count of visits with due
         FROM patients p
         JOIN visits v ON p.patient_id = v.patient_id
-        WHERE v.due_amount > 0.001 -- Tolerance for floating point
-        GROUP BY p.patient_id, p.name, p.phone_number
-        HAVING SUM(v.due_amount) > 0.001
-        ORDER BY total_due DESC;
+        WHERE v.due_amount > 0.001 -- Filter visits with due amount *before* grouping
     """
-    return _execute_query(query, fetch_all=True)
+    params = []
+
+    if search_term:
+        # Apply search filter on patient fields
+        base_query += """
+            AND (p.name LIKE ? OR CAST(p.patient_id AS TEXT) LIKE ? OR p.phone_number LIKE ?)
+        """
+        like_term = f'%{search_term}%'
+        params.extend([like_term, like_term, like_term])
+
+    base_query += """
+        GROUP BY p.patient_id, p.name, p.father_name, p.phone_number, p.address
+        HAVING SUM(v.due_amount) > 0.001 -- Ensure the patient still has total debt after grouping
+        ORDER BY total_due DESC, p.name COLLATE NOCASE;
+    """
+    # print(f"Executing query: {base_query} with params: {tuple(params)}") # Debugging
+    return _execute_query(base_query, tuple(params), fetch_all=True)
 
 # --- Dashboard Summary ---
 
