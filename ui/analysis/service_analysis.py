@@ -11,35 +11,26 @@ import qtawesome as qta
 from model.analysis_model import get_service_trends, get_service_utilization, get_tooth_number_analysis
 
 # Modern color palette - matching the patient dashboard
-COLOR_PRIMARY = "#2c3e50"       # Dark slate
-COLOR_SECONDARY = "#ecf0f1"     # Light gray
-COLOR_ACCENT = "#3498db"        # Blue
-COLOR_SUCCESS = "#27ae60"       # Green
-COLOR_WARNING = "#f39c12"       # Amber
-COLOR_DANGER = "#e74c3c"        # Red
-COLOR_TEXT_LIGHT = "#ffffff"    # White
-COLOR_TEXT_DARK = "#34495e"     # Dark slate
-COLOR_BORDER = "#bdc3c7"        # Light border
-COLOR_CHART_BG = "#ffffff"      # White background for charts
-COLOR_HOVER = "#4a6fa5"         # Hover state
+COLOR_PRIMARY = "#2c3e50"
+COLOR_SECONDARY = "#ecf0f1"
+COLOR_ACCENT = "#3498db"
+COLOR_SUCCESS = "#27ae60"
+COLOR_WARNING = "#f39c12"
+COLOR_DANGER = "#e74c3c"
+COLOR_TEXT_LIGHT = "#ffffff"
+COLOR_TEXT_DARK = "#34495e"
+COLOR_BORDER = "#bdc3c7"
+COLOR_CHART_BG = "#ffffff"
+COLOR_HOVER = "#4a6fa5"
 
-# Professional stylesheet for service analysis
+# Adjusted colors for better visibility
+PIE_COLORS = ['#4f81bd', '#c0504d', '#9bbb59', '#f79646', '#8064a2']
+
 ANALYSIS_STYLESHEET = f"""
     QWidget {{
         background-color: {COLOR_SECONDARY};
         color: {COLOR_TEXT_DARK};
         font-family: 'Segoe UI', 'Arial', sans-serif;
-    }}
-    QLabel#header {{
-        font-size: 24pt;
-        font-weight: bold;
-        color: {COLOR_PRIMARY};
-        padding: 5px;
-    }}
-    QLabel#subtitle {{
-        font-size: 12pt;
-        color: {COLOR_TEXT_DARK};
-        padding-bottom: 10px;
     }}
     QPushButton#refreshBtn {{
         background-color: {COLOR_ACCENT};
@@ -71,12 +62,6 @@ ANALYSIS_STYLESHEET = f"""
     }}
     QLabel#cardIcon {{
         background: transparent;
-    }}
-    QLabel#sectionTitle {{
-        font-size: 14pt;
-        font-weight: bold;
-        color: {COLOR_PRIMARY};
-        padding: 10px 0;
     }}
     QTableWidget {{
         border: 1px solid {COLOR_BORDER};
@@ -124,7 +109,7 @@ class ServiceAnalysis(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(ANALYSIS_STYLESHEET)
-        self.setWindowTitle("Service Analytics Dashboard")
+        self.setWindowTitle("Service Analysis")
         self.setMinimumSize(1200, 800)
         self.init_ui()
 
@@ -133,28 +118,17 @@ class ServiceAnalysis(QWidget):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header with title and refresh button
+        # Header with refresh button
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(0, 0, 0, 10)
-
-        title_layout = QVBoxLayout()
-        header = QLabel("Service Analytics Dashboard", objectName="header")
-        subtitle = QLabel("Monitor service utilization and trends", objectName="subtitle")
-        title_layout.addWidget(header)
-        title_layout.addWidget(subtitle)
 
         refresh_btn = QPushButton(qta.icon('fa5s.sync', color=COLOR_TEXT_LIGHT), " Refresh Data", objectName="refreshBtn")
         refresh_btn.clicked.connect(self.refresh_data)
         refresh_btn.setIconSize(QSize(14, 14))
 
-        header_layout.addLayout(title_layout)
         header_layout.addStretch()
         header_layout.addWidget(refresh_btn)
         main_layout.addLayout(header_layout)
-
-        # Overview Section
-        overview_label = QLabel("Overview", objectName="sectionTitle")
-        main_layout.addWidget(overview_label)
 
         # Main content area wrapped in scroll area
         scroll_area = QScrollArea()
@@ -167,8 +141,6 @@ class ServiceAnalysis(QWidget):
 
         # Left column - Service Utilization and Tooth Analysis
         left_column = QVBoxLayout()
-        utilization_label = QLabel("Service Utilization", objectName="sectionTitle")
-        left_column.addWidget(utilization_label)
 
         # Service Utilization Chart
         utilization_frame = QFrame(objectName="chartFrame")
@@ -181,14 +153,11 @@ class ServiceAnalysis(QWidget):
         self.utilization_plot.setLabel('left', 'Usage Count')
         self.utilization_plot.setLabel('bottom', 'Service')
         self.utilization_plot.setMaximumHeight(300)
-        self.utilization_plot.setMouseEnabled(x=False, y=False)  # Disable mouse interactions
+        self.utilization_plot.setMouseEnabled(x=False, y=False)
         utilization_layout.addWidget(self.utilization_plot)
         left_column.addWidget(utilization_frame)
 
         # Tooth Number Analysis Table
-        tooth_label = QLabel("Tooth Number Analysis", objectName="sectionTitle")
-        left_column.addWidget(tooth_label)
-
         tooth_frame = QFrame(objectName="chartFrame")
         tooth_layout = QVBoxLayout(tooth_frame)
         self.tooth_table = QTableWidget()
@@ -198,24 +167,20 @@ class ServiceAnalysis(QWidget):
         self.tooth_table.setAlternatingRowColors(True)
         self.tooth_table.horizontalHeader().setStretchLastSection(True)
         self.tooth_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.tooth_table.setMinimumHeight(240)
         tooth_layout.addWidget(self.tooth_table)
         left_column.addWidget(tooth_frame)
 
         # Right column - Service Trends
         right_column = QVBoxLayout()
-        trends_label = QLabel("Service Trends", objectName="sectionTitle")
-        right_column.addWidget(trends_label)
-
         trends_frame = QFrame(objectName="chartFrame")
         trends_layout = QVBoxLayout(trends_frame)
 
-        # Period selection
         period_combo = QComboBox(objectName="periodCombo")
         period_combo.addItems(['Day', 'Week', 'Month'])
         period_combo.currentTextChanged.connect(lambda text: self.load_service_trends(self.trends_plot, text.lower()))
         trends_layout.addWidget(period_combo)
 
-        # Trends Chart
         self.trends_plot = pg.PlotWidget()
         self.trends_plot.setBackground(COLOR_CHART_BG)
         self.trends_plot.showGrid(x=True, y=True, alpha=0.3)
@@ -224,20 +189,19 @@ class ServiceAnalysis(QWidget):
         self.trends_plot.setLabel('left', 'Usage Count')
         self.trends_plot.setLabel('bottom', 'Time Period')
         self.trends_plot.setMaximumHeight(300)
-        self.trends_plot.setMouseEnabled(x=False, y=False)  # Disable mouse interactions
+        self.trends_plot.setMouseEnabled(x=False, y=False)
         trends_layout.addWidget(self.trends_plot)
 
         trends_frame.setLayout(trends_layout)
         right_column.addWidget(trends_frame)
 
         # Add columns to content layout
-        content_layout.addLayout(left_column, 1)  # 50% width
-        content_layout.addLayout(right_column, 1)  # 50% width
+        content_layout.addLayout(left_column, 1)
+        content_layout.addLayout(right_column, 1)
 
         scroll_area.setWidget(scroll_content)
         main_layout.addWidget(scroll_area)
 
-        # Load initial data
         self.refresh_data()
 
     def refresh_data(self):
@@ -248,23 +212,20 @@ class ServiceAnalysis(QWidget):
     def load_service_utilization(self, plot):
         data = get_service_utilization()
         df = pd.DataFrame(data)
-
         bar = pg.BarGraphItem(x=range(len(df)), height=df['usage_count'], width=0.6, brush=COLOR_ACCENT)
         plot.clear()
         plot.addItem(bar)
         plot.getAxis('bottom').setTicks([[(i, str(s)) for i, s in enumerate(df['name'])]])
-        plot.getAxis('bottom').setStyle(tickTextOffset=10)  # Adjust tick text offset
+        plot.getAxis('bottom').setStyle(tickTextOffset=10)
         plot.setTitle("Service Utilization", color=COLOR_TEXT_DARK, size="12pt")
 
     def load_tooth_number(self, table):
         data = get_tooth_number_analysis()
         table.setRowCount(len(data))
-
         for row, entry in enumerate(data):
             table.setItem(row, 0, QTableWidgetItem(str(entry['tooth_number'])))
             table.setItem(row, 1, QTableWidgetItem(str(entry['treatment_count'])))
             table.setItem(row, 2, QTableWidgetItem(entry['common_treatments']))
-
         table.resizeColumnsToContents()
 
     def load_service_trends(self, plot, period):
@@ -278,16 +239,12 @@ class ServiceAnalysis(QWidget):
         period_to_index = {period: i for i, period in enumerate(unique_periods)}
         df['x_index'] = df['time_period'].map(period_to_index)
 
-        colors = [COLOR_ACCENT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER, COLOR_PRIMARY]
         for i, service in enumerate(df['service_name'].unique()):
             service_data = df[df['service_name'] == service]
             x = service_data['x_index'].values
             y = service_data['usage_count'].values
-            plot.plot(x, y, pen=pg.mkPen(color=colors[i % len(colors)], width=2), name=service)
+            plot.plot(x, y, pen=pg.mkPen(color=PIE_COLORS[i % len(PIE_COLORS)], width=2), name=service)
 
         plot.getAxis('bottom').setTicks([[(i, period) for period, i in period_to_index.items()]])
         plot.setTitle(f"Service Trends ({period.capitalize()})", color=COLOR_TEXT_DARK, size="12pt")
         plot.addLegend()
-
-    def wheelEvent(self, event):
-        event.ignore()
