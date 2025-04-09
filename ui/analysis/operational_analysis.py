@@ -395,14 +395,13 @@ class OperationalAnalysis(QWidget):
     def load_visit_trends(self, period):
         plot = self.trends_plot
         plot.clear()
-        # Clear existing legend if any - addLegend creates a new one
-        legend = plot.plotItem.legend
-        if legend:
-            legend.scene().removeItem(legend) # Remove old legend cleanly
 
-        if not MODEL_AVAILABLE: # Check again in case model becomes unavailable later
-             self._show_no_data_message(plot, "Data Model Unavailable")
-             return
+        legend = plot.plotItem.legend
+        
+
+        if not MODEL_AVAILABLE:
+            self._show_no_data_message(plot, "Data Model Unavailable")
+            return
 
         try:
             data = get_visit_trends(period)
@@ -418,9 +417,9 @@ class OperationalAnalysis(QWidget):
         try:
             df = pd.DataFrame(data)
             if 'visit_count' not in df.columns or 'time_period' not in df.columns:
-                 raise ValueError("Missing required columns in trend data")
+                raise ValueError("Missing required columns in trend data")
             df['visit_count'] = pd.to_numeric(df['visit_count'], errors='coerce').fillna(0)
-            df['time_period'] = df['time_period'].astype(str) # Ensure string for ticks
+            df['time_period'] = df['time_period'].astype(str)
 
             unique_periods = df['time_period'].unique()
             period_to_index = {p: i for i, p in enumerate(unique_periods)}
@@ -430,46 +429,35 @@ class OperationalAnalysis(QWidget):
             y = df['visit_count'].values
 
             if df.empty or y.sum() == 0:
-                 self._show_no_data_message(plot, f"No Visit Data for '{period.capitalize()}'")
-                 return
+                self._show_no_data_message(plot, f"No Visit Data for '{period.capitalize()}'")
+                return
 
-            # Styling - Thicker line, maybe gradient fill
-            pen_visits = pg.mkPen(color=CHART_COLORS_OPERATIONAL[2], width=3) # Use third color
-            gradient_visits = QLinearGradient(0,0,0,1); gradient_visits.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
-            gradient_visits.setColorAt(0.0, QColor(CHART_COLORS_OPERATIONAL[2]+'50')); # Add transparency hex
-            gradient_visits.setColorAt(1.0, QColor(CHART_COLORS_OPERATIONAL[2]+'05'));
+            pen_visits = pg.mkPen(color=CHART_COLORS_OPERATIONAL[2], width=3)
+            gradient_visits = QLinearGradient(0, 0, 0, 1)
+            gradient_visits.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
+            gradient_visits.setColorAt(0.0, QColor(CHART_COLORS_OPERATIONAL[2] + '50'))
+            gradient_visits.setColorAt(1.0, QColor(CHART_COLORS_OPERATIONAL[2] + '05'))
             brush_visits = QBrush(gradient_visits)
 
-            # Plot line and add fill
             visit_curve = plot.plot(x, y, pen=pen_visits, name='Visits')
             fill_item = pg.FillBetweenItem(visit_curve, pg.PlotDataItem(x, np.zeros_like(x)), brush=brush_visits)
             plot.addItem(fill_item)
 
-            # Add markers if few data points for visibility
             if len(x) < 20:
                 marker_size = 7
-                marker_pen = pg.mkPen(color=COLOR_CHART_BG, width=1.5) # Outline matches bg
+                marker_pen = pg.mkPen(color=COLOR_CHART_BG, width=1.5)
                 marker_brush = pg.mkBrush(color=CHART_COLORS_OPERATIONAL[2])
                 visit_curve.setSymbol('o')
                 visit_curve.setSymbolSize(marker_size)
                 visit_curve.setSymbolPen(marker_pen)
                 visit_curve.setSymbolBrush(marker_brush)
 
-
-            # Setup ticks - handle potential errors if period names are too long/complex
             try:
-                 ticks = [[(i, p) for p, i in period_to_index.items()]]
-                 plot.getAxis('bottom').setTicks(ticks)
-                 # Rotate ticks if too many labels? Consider for 'day' view.
-                 # if period == 'day' and len(ticks[0]) > 15:
-                 #     plot.getAxis('bottom').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED)) # Ensure color set
-                 #     plot.getAxis('bottom').setStyle(tickTextOrientation='vertical') # Or angle if preferred
-                 # else:
-                 #     plot.getAxis('bottom').setStyle(tickTextOrientation='horizontal')
+                ticks = [[(i, p) for p, i in period_to_index.items()]]
+                plot.getAxis('bottom').setTicks(ticks)
             except Exception as e:
-                 print(f"Tick setting error: {e}. Falling back to default ticks.")
-                 plot.getAxis('bottom').setTicks(None) # Fallback
-
+                print(f"Tick setting error: {e}. Falling back to default ticks.")
+                plot.getAxis('bottom').setTicks(None)
 
             plot.getAxis('bottom').setStyle(tickTextOffset=5, tickFont=QFont(FONT_REGULAR, 8))
             plot.getAxis('left').setStyle(tickFont=QFont(FONT_REGULAR, 8))
@@ -477,21 +465,19 @@ class OperationalAnalysis(QWidget):
             plot.setLabel('left', 'Visit Count', units='', color=COLOR_TEXT_DARK, size='9pt')
             plot.setLabel('bottom', 'Time Period', units='', color=COLOR_TEXT_DARK, size='9pt')
 
-            # Add Legend
-            legend = plot.addLegend(offset=(-15, 5), brush=pg.mkBrush(COLOR_CHART_BG+'E0'), pen=pg.mkPen(COLOR_BORDER, width=0.5), labelTextSize='8pt')
+            legend = plot.addLegend(offset=(-15, 5),
+                                    brush=pg.mkBrush(COLOR_CHART_BG + 'E0'),
+                                    pen=pg.mkPen(COLOR_BORDER, width=0.5),
+                                    labelTextSize='8pt')
             legend.setLabelTextColor(COLOR_TEXT_DARK)
 
-
-            # Adjust limits
-            y_max = y.max() if len(y) > 0 else 1 # Avoid division by zero if y is empty
-            plot.getViewBox().setLimits(xMin=-0.5, xMax=len(x)-0.5, yMin=0 - y_max*0.05, yMax=y_max*1.05)
+            y_max = y.max() if len(y) > 0 else 1
+            plot.getViewBox().setLimits(xMin=-0.5, xMax=len(x) - 0.5, yMin=0 - y_max * 0.05, yMax=y_max * 1.05)
             plot.getViewBox().autoRange(padding=0.02)
 
         except Exception as e:
             print(f"ERROR processing trend data for '{period}': {e}")
             self._show_no_data_message(plot, "Error Displaying Data")
-
-
     def wheelEvent(self, event):
         event.ignore() # Disable wheel scroll globally for the main widget
 
