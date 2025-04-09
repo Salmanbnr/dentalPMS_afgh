@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QComboBox
+    QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QComboBox, QLineEdit
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QColor, QFont, QPalette, QLinearGradient
@@ -69,14 +69,24 @@ QHeaderView::section {{
     border-bottom: 1px solid {COLOR_BORDER};
 }}
 QComboBox {{
-    background-color: {COLOR_ACCENT};
-    color: {COLOR_TEXT_LIGHT};
+    background-color: {CHART_COLORS_DENTAL[2]};  /* Gold for filter */
+    color: {COLOR_TEXT_DARK};  /* Dark text for visibility */
     border-radius: 8px;
     padding: 8px;
     font-size: 10pt;
 }}
 QComboBox:hover {{
     background-color: {COLOR_HOVER};
+}}
+QLineEdit {{
+    background-color: {COLOR_CHART_BG};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 10pt;
+}}
+QLineEdit:focus {{
+    border: 2px solid {COLOR_ACCENT};
 }}
 """
 
@@ -110,11 +120,12 @@ class FinancialAnalysis(QWidget):
         revenue_layout = QVBoxLayout(revenue_frame)
         revenue_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Add Period Filter (Day/Week/Month)
-        period_combo = QComboBox()
-        period_combo.addItems(['Day', 'Week', 'Month'])
-        period_combo.currentTextChanged.connect(lambda text: self.load_revenue_analysis(self.revenue_plot, text.lower()))
-        revenue_layout.addWidget(period_combo)
+        # Add Period Filter (Day/Week/Month) with Placeholder and Light Background
+        self.period_combo = QComboBox()
+        self.period_combo.addItems(['Day', 'Week', 'Month'])
+        self.period_combo.setPlaceholderText("Filter by Day, Week, Month")  # Placeholder for clarity
+        self.period_combo.currentTextChanged.connect(lambda text: self.load_revenue_analysis(self.revenue_plot, text.lower()))
+        revenue_layout.addWidget(self.period_combo)
 
         self.revenue_plot = pg.PlotWidget()
         self.revenue_plot.setBackground(COLOR_CHART_BG)
@@ -134,7 +145,7 @@ class FinancialAnalysis(QWidget):
         left_column.addWidget(revenue_frame)
         left_column.addStretch()
 
-        # Right: Price Deviation Table
+        # Right: Price Deviation Table with Search Bar
         right_column = QVBoxLayout()
         right_column.setSpacing(15)
 
@@ -143,6 +154,13 @@ class FinancialAnalysis(QWidget):
         deviation_frame.setStyleSheet(f"background-color: {COLOR_CHART_BG}; border-radius:12px;")
         deviation_layout = QVBoxLayout(deviation_frame)
         deviation_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Add Search Bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search by name...")
+        self.search_bar.setFixedWidth(200)
+        self.search_bar.textChanged.connect(self.filter_table)
+        deviation_layout.addWidget(self.search_bar)
 
         self.deviation_table = QTableWidget()
         self.deviation_table.setColumnCount(5)
@@ -226,23 +244,25 @@ class FinancialAnalysis(QWidget):
 
     def load_price_deviation(self, table):
         data = get_price_deviation_analysis()
-        services = data['services']
-        meds = data['medications']
+        self.services = data['services']
+        self.meds = data['medications']
+        self.all_data = self.services + self.meds
 
-        table.setRowCount(len(services) + len(meds))
-        for row, entry in enumerate(services):
-            table.setItem(row, 0, QTableWidgetItem(entry['name']))
-            table.setItem(row, 1, QTableWidgetItem(str(entry['default_price'])))
-            table.setItem(row, 2, QTableWidgetItem(str(round(entry['avg_charged'], 2))))
-            table.setItem(row, 3, QTableWidgetItem(str(round(entry['avg_deviation'], 2))))
-            table.setItem(row, 4, QTableWidgetItem(str(entry['count'])))
-        for row, entry in enumerate(meds, len(services)):
+        table.setRowCount(len(self.all_data))
+        for row, entry in enumerate(self.all_data):
             table.setItem(row, 0, QTableWidgetItem(entry['name']))
             table.setItem(row, 1, QTableWidgetItem(str(entry['default_price'])))
             table.setItem(row, 2, QTableWidgetItem(str(round(entry['avg_charged'], 2))))
             table.setItem(row, 3, QTableWidgetItem(str(round(entry['avg_deviation'], 2))))
             table.setItem(row, 4, QTableWidgetItem(str(entry['count'])))
         table.resizeColumnsToContents()
+
+    def filter_table(self, txt):
+        txt = txt.lower()
+        for r in range(self.deviation_table.rowCount()):
+            itm = self.deviation_table.item(r, 0)  # Filter by name (column 0)
+            hide = txt not in itm.text().lower()
+            self.deviation_table.setRowHidden(r, hide)
 
     def wheelEvent(self, event):
         event.ignore()  # Disable wheel scroll for the entire widget
