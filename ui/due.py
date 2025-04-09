@@ -7,8 +7,8 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit, 
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
+    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox, QFrame, QScrollArea, QSizePolicy, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
@@ -73,7 +73,7 @@ DUE_PAGE_STYLESHEET = f"""
         font-size: 11pt;
         font-family: 'Roboto', sans-serif;
         min-width: 120px;
-        
+
     }}
     #DuePatientsWidget QPushButton#SearchBtn:hover, #DuePatientsWidget QPushButton#RefreshBtn:hover {{
         background-color: {COLOR_HOVER};
@@ -91,28 +91,24 @@ DUE_PAGE_STYLESHEET = f"""
 
     /* Table Styling */
     #DuePatientsWidget QTableWidget {{
-        background-color: {COLOR_CHART_BG};
         border: 1px solid {COLOR_BORDER};
         gridline-color: {COLOR_BORDER};
-        font-size: 11pt;
-        border-radius: 8px;
-        alternate-background-color: {COLOR_TABLE_ALT_ROW};
+        font-size: 10pt;
+        background-color: white;
     }}
     #DuePatientsWidget QHeaderView::section {{
         background-color: {COLOR_PRIMARY};
         color: {COLOR_TEXT_LIGHT};
-        padding: 8px;
+        padding: 6px;
         border: none;
         border-right: 1px solid {COLOR_BORDER};
         font-weight: bold;
-        font-size: 11pt;
-        font-family: 'Roboto', sans-serif;
     }}
     #DuePatientsWidget QHeaderView::section:last {{
         border-right: none;
     }}
     #DuePatientsWidget QTableWidget::item {{
-        padding: 6px;
+        padding: 5px;
         color: {COLOR_TEXT_DARK};
     }}
     #DuePatientsWidget QTableWidget::item:selected {{
