@@ -7,12 +7,12 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit, 
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
-    QMessageBox, QFrame, QScrollArea, QSizePolicy
+    QMessageBox, QFrame, QScrollArea, QSizePolicy, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QFont
 import qtawesome as qta
 
 # Use absolute/relative imports for the model
@@ -24,14 +24,20 @@ except ImportError:
     sys.path.append(str(project_root))
     from model import due_model
 
-# Color constants (matching the provided style)
-COLOR_PRIMARY = "#2c3e50"
-COLOR_SECONDARY = "#ecf0f1"
-COLOR_ACCENT = "#3498db"
-COLOR_TEXT_LIGHT = "#ffffff"
-COLOR_TEXT_DARK = "#34495e"
-COLOR_BORDER = "#bdc3c7"
-COLOR_HOVER = "#4a6fa5"
+# Premium Color Palette (aligned with PatientAnalysis)
+COLOR_PRIMARY = "#1a2b4a"      # Deep Navy Blue (Headers, Titles)
+COLOR_SECONDARY = "#f5f7fa"    # Soft Off-White (Background)
+COLOR_SUCCESS = "#27ae60"      # Green (Success, Positive Metrics)
+COLOR_WARNING = "#e67e22"      # Orange (Warnings, Medium Risk)
+COLOR_DANGER = "#e74c3c"       # Red (Danger, Critical Conditions)
+COLOR_ACCENT = "#00aaff"         # Purple (Optional Category)
+COLOR_TEXT_LIGHT = "#ffffff"   # Pure White (Light Text)
+COLOR_TEXT_DARK = "#1f2a44"     # Dark Slate (Body Text)
+COLOR_TEXT_MUTED = "#7f8c8d"   # Muted Gray (Subtext)
+COLOR_BORDER = "#d0d7de"       # Light Gray Border (UI Elements)
+COLOR_CHART_BG = "#ffffff"     # White (Chart/Table Background)
+COLOR_TABLE_ALT_ROW = "#f8f9f9" # Very Light Gray (Alternating Rows)
+COLOR_HOVER = "#007acc"        # Darker Blue (Hover State)
 
 DUE_PAGE_STYLESHEET = f"""
     /* Style the DuePatientsWidget itself */
@@ -48,22 +54,28 @@ DUE_PAGE_STYLESHEET = f"""
 
     /* Input fields and buttons */
     #DuePatientsWidget QLineEdit {{
-        padding: 8px;
+        padding: 8px 12px;
         border: 1px solid {COLOR_BORDER};
-        border-radius: 4px;
-        font-size: 10pt;
-        background-color: white;
+        border-radius: 8px;
+        font-size: 11pt;
+        background-color: {COLOR_CHART_BG};
+        font-family: 'Roboto', sans-serif;
     }}
-    #DuePatientsWidget QPushButton {{
+    #DuePatientsWidget QLineEdit:focus {{
+        border: 2px solid {COLOR_ACCENT};
+    }}
+    #DuePatientsWidget QPushButton#SearchBtn, #DuePatientsWidget QPushButton#RefreshBtn {{
         background-color: {COLOR_ACCENT};
         color: {COLOR_TEXT_LIGHT};
         border: none;
         padding: 8px 15px;
-        border-radius: 4px;
-        font-size: 10pt;
+        border-radius: 8px;
+        font-size: 11pt;
+        font-family: 'Roboto', sans-serif;
         min-width: 120px;
+        
     }}
-    #DuePatientsWidget QPushButton:hover {{
+    #DuePatientsWidget QPushButton#SearchBtn:hover, #DuePatientsWidget QPushButton#RefreshBtn:hover {{
         background-color: {COLOR_HOVER};
     }}
     #DuePatientsWidget QPushButton:disabled {{
@@ -71,26 +83,36 @@ DUE_PAGE_STYLESHEET = f"""
         color: #ecf0f1;
     }}
 
+    /* Card Styling (for overview cards) */
+    #DuePatientsWidget QFrame#CardFrame {{
+        background-color: {COLOR_CHART_BG};
+        border-radius: 10px;
+    }}
+
     /* Table Styling */
     #DuePatientsWidget QTableWidget {{
+        background-color: {COLOR_CHART_BG};
         border: 1px solid {COLOR_BORDER};
         gridline-color: {COLOR_BORDER};
-        font-size: 10pt;
-        background-color: white;
+        font-size: 11pt;
+        border-radius: 8px;
+        alternate-background-color: {COLOR_TABLE_ALT_ROW};
     }}
     #DuePatientsWidget QHeaderView::section {{
         background-color: {COLOR_PRIMARY};
         color: {COLOR_TEXT_LIGHT};
-        padding: 6px;
+        padding: 8px;
         border: none;
         border-right: 1px solid {COLOR_BORDER};
         font-weight: bold;
+        font-size: 11pt;
+        font-family: 'Roboto', sans-serif;
     }}
     #DuePatientsWidget QHeaderView::section:last {{
         border-right: none;
     }}
     #DuePatientsWidget QTableWidget::item {{
-        padding: 5px;
+        padding: 6px;
         color: {COLOR_TEXT_DARK};
     }}
     #DuePatientsWidget QTableWidget::item:selected {{
@@ -137,7 +159,7 @@ DUE_PAGE_STYLESHEET = f"""
 class DuePatientsWidget(QWidget):
     """
     A widget to display patients with outstanding due amounts,
-    designed to be used in a dashboard.
+    designed to be used in a dashboard with modern overview cards.
     """
     data_loaded = pyqtSignal()
 
@@ -166,39 +188,78 @@ class DuePatientsWidget(QWidget):
         heading_label = QLabel("Patients with Due Amounts")
         heading_label.setStyleSheet(f"""
             QLabel {{
-                font-size: 24pt;
+                font-size: 26pt;
                 font-weight: bold;
                 color: {COLOR_PRIMARY};
                 margin-bottom: 15px;
+                font-family: 'Roboto', sans-serif;
             }}
         """)
         main_layout.addWidget(heading_label)
 
-        # Header
+        # Header Frame
         header_frame = QFrame()
         header_frame.setObjectName("HeaderFrame")
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.setSpacing(10)
 
+        # Search Section
         search_icon = qta.icon('fa5s.search', color=COLOR_TEXT_DARK)
         search_label = QLabel()
-        search_label.setPixmap(search_icon.pixmap(QSize(16, 16)))
+        search_label.setPixmap(search_icon.pixmap(QSize(18, 18)))
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Live search by Patient ID, Name, or Phone...")
+        self.search_input.setPlaceholderText("Search by Patient ID, Name, or Phone...")
         self.search_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.search_input.setMinimumWidth(300)
 
-        self.search_button = QPushButton(qta.icon('fa5s.search', color=COLOR_TEXT_LIGHT), " Search")
-        self.refresh_button = QPushButton(qta.icon('fa5s.sync', color=COLOR_TEXT_LIGHT), " Refresh")
+        self.search_button = QPushButton(qta.icon('fa5s.search', color=COLOR_TEXT_LIGHT), " Search", objectName="SearchBtn")
+        self.refresh_button = QPushButton(qta.icon('fa5s.sync', color=COLOR_TEXT_LIGHT), " Refresh", objectName="RefreshBtn")
 
+        # Overview Cards (Inspired by PatientAnalysis)
+        self.cards_layout = QHBoxLayout()
+        self.cards_layout.setSpacing(10)
+        self.cards = {}
+        metrics = [
+            ("Total Due Patients", "fa5s.users", COLOR_ACCENT, lambda: self.due_patients_count),
+            ("Total Due Amount", "fa5s.money-bill", COLOR_ACCENT, lambda: f"{self.total_due_amount:,.2f}"),
+        ]
+        for text, icon, color, func in metrics:
+            card = QFrame(objectName="CardFrame")
+            card.setMinimumHeight(80)
+            card.setMaximumWidth(200)
+            layout = QVBoxLayout(card)
+            layout.setContentsMargins(15, 10, 15, 10)
+            row = QHBoxLayout()
+            icon_lbl = QLabel()
+            icon_lbl.setPixmap(qta.icon(icon, color=color).pixmap(24, 24))
+            row.addWidget(icon_lbl)
+            lbl = QLabel(text)
+            lbl.setFont(QFont('Roboto', 10, QFont.Weight.Medium))
+            lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+            row.addWidget(lbl)
+            row.addStretch()
+            layout.addLayout(row)
+            val = QLabel("--")
+            val.setFont(QFont('Roboto', 16, QFont.Weight.Bold))
+            val.setStyleSheet(f"color: {color};")
+            layout.addWidget(val)
+            self.cards[text] = (val, func)
+            shadow = QGraphicsDropShadowEffect()
+            shadow.setBlurRadius(8)
+            shadow.setColor(QColor(0, 0, 0, 20))
+            shadow.setOffset(0, 3)
+            card.setGraphicsEffect(shadow)
+            self.cards_layout.addWidget(card)
+        self.cards_layout.addStretch()
+
+        # Assemble header layout
         header_layout.addWidget(search_label)
         header_layout.addWidget(self.search_input, 1)
         header_layout.addWidget(self.search_button)
         header_layout.addWidget(self.refresh_button)
-        header_layout.addStretch(1)
-
+        header_layout.addLayout(self.cards_layout)
         main_layout.addWidget(header_frame)
 
         # Scroll Area for Due Table
@@ -232,10 +293,9 @@ class DuePatientsWidget(QWidget):
         scroll_area.setWidget(self.due_table)
         main_layout.addWidget(scroll_area)
 
-        # Status Label
-        self.status_label = QLabel("Loading data...")
-        self.status_label.setStyleSheet(f"font-style: italic; color: {COLOR_TEXT_DARK};")
-        main_layout.addWidget(self.status_label)
+        # Initialize data variables
+        self.due_patients_count = 0
+        self.total_due_amount = 0.0
 
     def _connect_signals(self):
         self.search_input.textChanged.connect(self.search_timer.start)
@@ -252,8 +312,6 @@ class DuePatientsWidget(QWidget):
         self._perform_search()
 
     def load_due_patients(self, search_term=""):
-        self.status_label.setText("Searching..." if search_term else "Loading data...")
-        
         patients_data = due_model.get_due_patients_details(search_term)
 
         self.due_table.setSortingEnabled(False)
@@ -261,14 +319,12 @@ class DuePatientsWidget(QWidget):
 
         if patients_data is None:
             QMessageBox.critical(self, "Database Error", "Could not retrieve patient debt information. Please check logs.")
-            self.status_label.setText("Error loading data.")
+            self.update_cards_with_error()
             return
-        elif not patients_data:
-            search_message_part = f' matching "{search_term}"' if search_term else ""
-            self.status_label.setText(f"No patients found with due amounts{search_message_part}.")
         else:
             self.due_table.setRowCount(len(patients_data))
-            total_overall_due = 0.0
+            self.due_patients_count = len(patients_data)
+            self.total_due_amount = 0.0
             for row, patient in enumerate(patients_data):
                 patient_id_num = patient.get('patient_id')
                 id_item = QTableWidgetItem(str(patient_id_num) if patient_id_num is not None else "N/A")
@@ -280,7 +336,7 @@ class DuePatientsWidget(QWidget):
                 due_visits_item = QTableWidgetItem(str(due_visits_count_val))
                 due_visits_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 total_due = patient.get('total_due', 0.0)
-                total_overall_due += total_due
+                self.total_due_amount += total_due
                 due_item = QTableWidgetItem(f"PKR {total_due:,.2f}")
                 due_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
@@ -292,14 +348,28 @@ class DuePatientsWidget(QWidget):
                 self.due_table.setItem(row, 5, due_visits_item)
                 self.due_table.setItem(row, 6, due_item)
 
-            self.status_label.setText(f"Found {len(patients_data)} patient(s) with a total due amount of PKR {total_overall_due:,.2f}.")
+            self.update_cards()
 
         self.due_table.setSortingEnabled(True)
         self.data_loaded.emit()
 
+    def update_cards(self):
+        """Update the overview cards with current data."""
+        for text, (lbl, func) in self.cards.items():
+            try:
+                lbl.setText(str(func()))
+            except:
+                lbl.setText("N/A")
+
+    def update_cards_with_error(self):
+        """Set cards to error state if data loading fails."""
+        for text, (lbl, _) in self.cards.items():
+            lbl.setText("N/A")
+
 if __name__ == '__main__':
     from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
+    app.setStyle('Fusion')
     window = DuePatientsWidget()
     window.setWindowTitle("Patients with Due Amounts")
     window.resize(1000, 700)

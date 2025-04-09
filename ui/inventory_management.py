@@ -49,7 +49,7 @@ INVENTORY_STYLESHEET = f"""
         font-size: 12pt;
         font-weight: 600;
         
-        transition: all 0.3s ease; /* Smooth transition for hover and selection */
+       
     }}
     QTabBar::tab:selected {{
         background-color: {COLOR_ACCENT};

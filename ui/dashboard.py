@@ -42,7 +42,7 @@ DASHBOARD_STYLESHEET = f"""
         background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                                     stop:0 {COLOR_PRIMARY}, stop:1 #2c3e60);
         border-right: 1px solid {COLOR_BORDER};
-        box-shadow: 5px 0px 15px {COLOR_SHADOW};
+       
     }}
     #Sidebar QLabel#ClinicNameLabel {{
         color: {COLOR_TEXT_LIGHT};
@@ -67,7 +67,7 @@ DASHBOARD_STYLESHEET = f"""
         font-family: 'Roboto', sans-serif;
         border-radius: 8px;
         margin: 5px 15px;
-        transition: background-color 0.3s;
+    
     }}
     #Sidebar QPushButton:hover {{
         background-color: {COLOR_HOVER};
@@ -75,7 +75,7 @@ DASHBOARD_STYLESHEET = f"""
     #Sidebar QPushButton:checked {{
         background-color: {COLOR_ACCENT};
         font-weight: bold;
-        box-shadow: 0 4px 12px {COLOR_SHADOW};
+      
     }}
     #ContentStackWidget {{
         background-color: {COLOR_SECONDARY};
@@ -106,7 +106,7 @@ DASHBOARD_STYLESHEET = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 10px;
         margin-bottom: 15px;
-        box-shadow: 0 4px 12px {COLOR_SHADOW};
+      
     }}
 """
 
