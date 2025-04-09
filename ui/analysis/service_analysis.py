@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QComboBox, QLineEdit, QMessageBox
 )
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QColor, QFont, QPalette, QLinearGradient,QBrush
+from PyQt6.QtGui import QColor, QFont, QPalette, QLinearGradient, QBrush
 import pyqtgraph as pg
 import pandas as pd
 import numpy as np
@@ -97,7 +97,7 @@ class ServiceAnalysis(QWidget):
         self.setWindowTitle("Service Analysis Dashboard")
         self.setMinimumSize(800, 900)  # Reduced for side panel compatibility
         self.init_ui()
-        self.load_data()
+        self.load_data()  # Ensure this is called here
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -217,6 +217,7 @@ class ServiceAnalysis(QWidget):
         main_layout.addWidget(container)
 
     def load_data(self):
+        """Load initial data for all visualizations."""
         self.load_service_utilization(self.utilization_plot)
         self.load_tooth_number(self.tooth_table)
         self.load_service_trends(self.trends_plot, 'month')
@@ -228,15 +229,14 @@ class ServiceAnalysis(QWidget):
         if df.empty:
             return
 
+        df = df.sort_values(by='usage_count', ascending=False).head(10)
         x = np.arange(len(df['name']))
 
-        # Create gradient brush for bars
+        # Gradient brush
         gradient = QLinearGradient(0, 0, 0, 1)
         gradient.setCoordinateMode(QLinearGradient.ObjectMode)
-        gradient.setColorAt(0, QColor(CHART_COLORS_SERVICE[0]))
-        gradient.setColorAt(1, QColor(CHART_COLORS_SERVICE[0] + '80'))
-
-        # Create a QBrush from the gradient
+        gradient.setColorAt(0, QColor("#85C1E9"))
+        gradient.setColorAt(1, QColor("#2874A6"))
         brush = QBrush(gradient)
 
         bars = pg.BarGraphItem(
@@ -248,15 +248,22 @@ class ServiceAnalysis(QWidget):
         )
         plot.addItem(bars)
 
-        # Set axis ticks and styles
-        plot.getAxis('bottom').setTicks([[(i, str(s)) for i, s in enumerate(df['name'])]])
-        plot.getAxis('bottom').setStyle(tickTextOffset=15, tickFont=QFont('Roboto', 8))
+        # Replace x-axis with custom axis
+        rotated_axis = RotatedAxis(orientation='bottom')
+        plot.setAxisItems({'bottom': rotated_axis})
+
+        # Create and manually add text labels at correct positions
+        for i, label in enumerate(df['name']):
+            text = pg.TextItem(text=str(label), anchor=(0, 0), angle=90)  # Rotated 90 degrees
+            text.setFont(QFont("Roboto", 8))
+            text.setColor(QColor("#2C3E50"))
+            plot.addItem(text)
+            text.setPos(x[i] - 0.1, 0)
+
         plot.getAxis('left').setStyle(tickFont=QFont('Roboto', 8))
 
-        # Set chart title
         plot.setTitle("Service Utilization", color=COLOR_TEXT_DARK, size="14pt", bold=True)
 
-        # Add legend
         legend = plot.addLegend(offset=(10, 10))
         legend.addItem(bars, "Usage")
         legend.setBrush(pg.mkBrush(COLOR_CHART_BG))
@@ -330,9 +337,15 @@ class ServiceAnalysis(QWidget):
     def wheelEvent(self, event):
         event.ignore()  # Disable wheel scroll for the entire widget
 
+class RotatedAxis(pg.AxisItem):
+    def tickStrings(self, values, scale, spacing):
+        """Override to rotate tick labels manually (handled by setting angle in TextItem)"""
+        return [str(value) for value in values]
+
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    window = ServiceAnalysis()
+    window = ServiceAnalysis()  # Changed to directly instantiate ServiceAnalysis
     window.show()
     sys.exit(app.exec())
