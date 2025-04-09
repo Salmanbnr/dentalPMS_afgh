@@ -160,24 +160,7 @@ class OperationalAnalysis(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20) # Generous margins
         main_layout.setSpacing(20) # Consistent spacing
 
-        # --- Header Row (Title Left, Refresh Button Right) ---
-        header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(0, 0, 0, 0) # No extra margins
-
-        title = QLabel("Operational Analytics", objectName="MainTitleLabel")
-        header_layout.addWidget(title, 1, Qt.AlignmentFlag.AlignLeft) # Title takes space
-
-        refresh_btn = QPushButton(qta.icon('fa5s.sync', color=COLOR_TEXT_LIGHT), " Refresh Data", objectName="refreshBtn")
-        refresh_btn.setIconSize(QSize(14, 14))
-        refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        if MODEL_AVAILABLE:
-            refresh_btn.clicked.connect(self.load_data)
-        else:
-            refresh_btn.setEnabled(False)
-            refresh_btn.setToolTip("Data model not available")
-
-        header_layout.addWidget(refresh_btn, 0, Qt.AlignmentFlag.AlignRight) # Button aligns right
-        main_layout.addLayout(header_layout)
+    
 
 
         # --- Main Content Area (Consider QGridLayout for more complex layouts) ---
