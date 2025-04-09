@@ -1,41 +1,29 @@
 import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QComboBox, QLineEdit, QMessageBox
+    QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QLineEdit, QMessageBox
 )
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QColor, QFont, QPalette, QLinearGradient, QBrush
+from PyQt6.QtGui import QColor, QFont, QPalette
 import pyqtgraph as pg
 import pandas as pd
 import numpy as np
 
-from model.analysis_model import get_service_trends, get_service_utilization, get_tooth_number_analysis
+from model.analysis_model import get_service_utilization, get_medication_utilization, get_tooth_number_analysis
 
-# --- Updated Color Palette for Dental Clinic (Professional and Clean) ---
-COLOR_PRIMARY = "#2c3e50"  # Dark Blue (Headers, Titles)
-COLOR_SECONDARY = "#ecf0f1"  # Light Gray (Background)
-COLOR_ACCENT = "#3498db"  # Bright Blue (Buttons, Highlights)
-COLOR_SUCCESS = "#27ae60"  # Green (Success, Normal Ranges)
-COLOR_WARNING = "#e67e22"  # Orange (Warnings, Medium Risk)
-COLOR_DANGER = "#e74c3c"  # Red (Danger, Critical Conditions)
-COLOR_INFO = "#8e44ad"  # Purple (Optional Category)
-COLOR_TEXT_LIGHT = "#ffffff"  # White (Light Text)
-COLOR_TEXT_DARK = "#34495e"  # Dark Gray (Body Text)
-COLOR_TEXT_MUTED = "#7f8c8d"  # Muted Gray (Subtext)
-COLOR_BORDER = "#bdc3c7"  # Light Gray Border (UI Elements)
-COLOR_CHART_BG = "#ffffff"  # White (Chart Background)
-COLOR_TABLE_ALT_ROW = "#f8f9f9"  # Very Light Gray (Alternating Rows)
-COLOR_HOVER = "#4a6fa5"  # Hover State (Darker Accent Blue)
-
-# New Chart Colors for Service Analysis (Premium, No Green Tones)
-CHART_COLORS_SERVICE = [
-    "#4682B4",  # Steel Blue (Primary Service Data)
-    "#FF69B4",  # Hot Pink (Secondary Service Data)
-    "#DAA520",  # Goldenrod (Highlight Trends)
-    "#9932CC",  # Dark Orchid (Unique Metrics)
-    "#F08080",  # Light Coral (Additional Data)
-    "#4169E1"   # Royal Blue (Extra Trend)
-]
+# --- Updated Color Palette for Medical Analysis ---
+COLOR_PRIMARY = "#2c3e50"       # Dark Blue (Headers, Titles)
+COLOR_SECONDARY = "#ecf0f1"     # Light Gray (Background)
+COLOR_ACCENT = "#3498db"        # Bright Blue (Buttons, Highlights)
+COLOR_TEXT_LIGHT = "#ffffff"    # White (Light Text)
+COLOR_TEXT_DARK = "#34495e"     # Dark Gray (Body Text)
+COLOR_TEXT_MUTED = "#7f8c8d"    # Muted Gray (Subtext)
+COLOR_BORDER = "#bdc3c7"        # Light Gray Border (UI Elements)
+COLOR_CHART_BG = "#ffffff"      # White (Chart Background)
+COLOR_TABLE_ALT_ROW = "#f8f9f9" # Very Light Gray (Alternating Rows)
+COLOR_HOVER = "#4a6fa5"         # Hover State (Darker Accent Blue)
+COLOR_BAR_SERVICE = "#4682B4"   # Steel Blue for Services
+COLOR_BAR_MEDICAL = "#1abc9c"   # Solid Turquoise for Medications
 
 # --- Stylesheet ---
 DASHBOARD_STYLESHEET = f"""
@@ -68,16 +56,6 @@ QHeaderView::section {{
     font-weight: 600;
     border-bottom: 1px solid {COLOR_BORDER};
 }}
-QComboBox {{
-    background-color: {CHART_COLORS_SERVICE[2]};  /* Goldenrod for filter */
-    color: {COLOR_TEXT_DARK};  /* Dark text for visibility */
-    border-radius: 8px;
-    padding: 8px;
-    font-size: 10pt;
-}}
-QComboBox:hover {{
-    background-color: {COLOR_HOVER};
-}}
 QLineEdit {{
     background-color: {COLOR_CHART_BG};
     border: 1px solid {COLOR_BORDER};
@@ -94,7 +72,7 @@ class ServiceAnalysis(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(DASHBOARD_STYLESHEET)
-        self.setWindowTitle("Service Analysis Dashboard")
+        self.setWindowTitle("Combined Service and Medication Analysis Dashboard")
         self.setMinimumSize(800, 900)  # Reduced for side panel compatibility
         self.init_ui()
         self.load_data()  # Ensure this is called here
@@ -110,11 +88,11 @@ class ServiceAnalysis(QWidget):
         cont_layout.setSpacing(15)
         cont_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Left: Service Utilization and Tooth Analysis
+        # Left: Combined Utilization and Tooth Analysis
         left_column = QVBoxLayout()
         left_column.setSpacing(15)
 
-        # Service Utilization Chart (Bar Chart with Gradient Fill)
+        # Combined Utilization Chart (Bar Chart for both Services and Medications)
         utilization_frame = QFrame()
         utilization_frame.setMinimumHeight(400)
         utilization_frame.setStyleSheet(f"background-color: {COLOR_CHART_BG}; border-radius:12px;")
@@ -126,8 +104,8 @@ class ServiceAnalysis(QWidget):
         self.utilization_plot.showGrid(x=True, y=True, alpha=0.3)
         self.utilization_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
         self.utilization_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.utilization_plot.setLabel('left', 'Usage Count', color=COLOR_TEXT_DARK, size='10pt')
-        self.utilization_plot.setLabel('bottom', 'Service', color=COLOR_TEXT_DARK, size='10pt')
+        self.utilization_plot.setLabel('left', 'Usage/Prescription Count', color=COLOR_TEXT_DARK, size='10pt')
+        self.utilization_plot.setLabel('bottom', 'Item', color=COLOR_TEXT_DARK, size='10pt')
         self.utilization_plot.setMouseEnabled(x=False, y=False)
         utilization_layout.addWidget(self.utilization_plot)
 
@@ -176,99 +154,87 @@ class ServiceAnalysis(QWidget):
         tooth_frame.setGraphicsEffect(shadow)
         left_column.addWidget(tooth_frame)
 
-        # Right: Service Trends
-        right_column = QVBoxLayout()
-        right_column.setSpacing(15)
-
-        trends_frame = QFrame()
-        trends_frame.setMinimumHeight(400)
-        trends_frame.setStyleSheet(f"background-color: {COLOR_CHART_BG}; border-radius:12px;")
-        trends_layout = QVBoxLayout(trends_frame)
-        trends_layout.setContentsMargins(15, 15, 15, 15)
-
-        # Add Period Filter (Day/Week/Month)
-        self.period_combo = QComboBox()
-        self.period_combo.addItems(['Day', 'Week', 'Month'])
-        self.period_combo.setPlaceholderText("Filter by Day, Week, Month")
-        self.period_combo.currentTextChanged.connect(lambda text: self.load_service_trends(self.trends_plot, text.lower()))
-        trends_layout.addWidget(self.period_combo)
-
-        self.trends_plot = pg.PlotWidget()
-        self.trends_plot.setBackground(COLOR_CHART_BG)
-        self.trends_plot.showGrid(x=True, y=True, alpha=0.3)
-        self.trends_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.trends_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK))
-        self.trends_plot.setLabel('left', 'Usage Count', color=COLOR_TEXT_DARK, size='10pt')
-        self.trends_plot.setLabel('bottom', 'Time Period', color=COLOR_TEXT_DARK, size='10pt')
-        self.trends_plot.setMouseEnabled(x=False, y=False)
-        trends_layout.addWidget(self.trends_plot)
-
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(15)
-        shadow.setColor(QColor(0, 0, 0, 50))
-        shadow.setOffset(0, 5)
-        trends_frame.setGraphicsEffect(shadow)
-        right_column.addWidget(trends_frame)
-        right_column.addStretch()
-
         # Ensure no horizontal scroll by setting maximum width and flexible layout
-        cont_layout.addLayout(left_column, 1)  # Left takes 50% of space
-        cont_layout.addLayout(right_column, 1)  # Right takes 50% of space
+        cont_layout.addLayout(left_column, 1)  # Left takes 100% of space
         main_layout.addWidget(container)
 
     def load_data(self):
         """Load initial data for all visualizations."""
-        self.load_service_utilization(self.utilization_plot)
+        self.load_combined_utilization(self.utilization_plot)
         self.load_tooth_number(self.tooth_table)
-        self.load_service_trends(self.trends_plot, 'month')
 
-    def load_service_utilization(self, plot):
+    def load_combined_utilization(self, plot):
         plot.clear()
-        data = get_service_utilization()
-        df = pd.DataFrame(data)
-        if df.empty:
+
+        # Load service utilization data
+        service_data = get_service_utilization()
+        service_df = pd.DataFrame(service_data)
+        if not service_df.empty:
+            service_df = service_df.sort_values(by='usage_count', ascending=False).head(5)
+            service_df['type'] = 'Service'
+            service_df['value'] = service_df['usage_count']
+            service_df['name'] = service_df['name']
+
+        # Load medication utilization data
+        med_data = get_medication_utilization()
+        med_df = pd.DataFrame(med_data)
+        if not med_df.empty:
+            med_df = med_df.sort_values(by='prescription_count', ascending=False).head(5)
+            med_df['type'] = 'Medication'
+            med_df['value'] = med_df['prescription_count']
+            med_df['name'] = med_df['name']
+
+        # Combine both datasets
+        combined_df = pd.concat([service_df, med_df], ignore_index=True)
+        if combined_df.empty:
             return
 
-        df = df.sort_values(by='usage_count', ascending=False).head(10)
-        x = np.arange(len(df['name']))
+        combined_df = combined_df.sort_values(by='value', ascending=False)
+        x = np.arange(len(combined_df))
 
-        # Gradient brush
-        gradient = QLinearGradient(0, 0, 0, 1)
-        gradient.setCoordinateMode(QLinearGradient.ObjectMode)
-        gradient.setColorAt(0, QColor("#85C1E9"))
-        gradient.setColorAt(1, QColor("#2874A6"))
-        brush = QBrush(gradient)
-
-        bars = pg.BarGraphItem(
-            x=x,
-            height=df['usage_count'],
-            width=0.6,
-            brush=brush,
+        # Use solid colors for bars, no gradient
+        bars_service = pg.BarGraphItem(
+            x=x[combined_df['type'] == 'Service'],
+            height=combined_df[combined_df['type'] == 'Service']['value'],
+            width=0.3,
+            brush=pg.mkBrush(COLOR_BAR_SERVICE),  # Steel Blue for Services
             pen=pg.mkPen(COLOR_BORDER)
         )
-        plot.addItem(bars)
+
+        bars_med = pg.BarGraphItem(
+            x=x[combined_df['type'] == 'Medication'],
+            height=combined_df[combined_df['type'] == 'Medication']['value'],
+            width=0.3,
+            brush=pg.mkBrush(COLOR_BAR_MEDICAL),  # Solid Turquoise for Medications
+            pen=pg.mkPen(COLOR_BORDER)
+        )
+
+        plot.addItem(bars_service)
+        plot.addItem(bars_med)
 
         # Replace x-axis with custom axis
         rotated_axis = RotatedAxis(orientation='bottom')
         plot.setAxisItems({'bottom': rotated_axis})
 
         # Create and manually add text labels at correct positions
-        for i, label in enumerate(df['name']):
+        for i, label in enumerate(combined_df['name']):
             text = pg.TextItem(text=str(label), anchor=(0, 0), angle=90)  # Rotated 90 degrees
             text.setFont(QFont("Roboto", 8))
-            text.setColor(QColor("#2C3E50"))
+            text.setColor(QColor(COLOR_TEXT_DARK))
             plot.addItem(text)
-            text.setPos(x[i] - 0.1, 0)
+            text.setPos(i - 0.1, 0)
 
         plot.getAxis('left').setStyle(tickFont=QFont('Roboto', 8))
 
-        plot.setTitle("Service Utilization", color=COLOR_TEXT_DARK, size="14pt", bold=True)
+        plot.setTitle("Combined Service and Medication Utilization", color=COLOR_TEXT_DARK, size="14pt", bold=True)
 
         legend = plot.addLegend(offset=(10, 10))
-        legend.addItem(bars, "Usage")
+        legend.addItem(bars_service, "Services")
+        legend.addItem(bars_med, "Medications")
         legend.setBrush(pg.mkBrush(COLOR_CHART_BG))
         legend.setPen(pg.mkPen(COLOR_BORDER, width=1))
         legend.setLabelTextColor(COLOR_TEXT_DARK)
+
     def load_tooth_number(self, table):
         data = get_tooth_number_analysis()
         self.tooth_data = data
@@ -279,44 +245,6 @@ class ServiceAnalysis(QWidget):
             table.setItem(row, 1, QTableWidgetItem(str(entry['treatment_count'])))
             table.setItem(row, 2, QTableWidgetItem(entry['common_treatments']))
         table.resizeColumnsToContents()
-
-    def load_service_trends(self, plot, period):
-        plot.clear()
-        data = get_service_trends(period)
-        if not data or pd.DataFrame(data).empty:
-            return
-
-        df = pd.DataFrame(data)
-        unique_periods = df['time_period'].unique()
-        period_to_index = {period: i for i, period in enumerate(unique_periods)}
-        df['x_index'] = df['time_period'].map(period_to_index)
-
-        # Premium Line Chart with Gradient Fills
-        for i, service in enumerate(df['service_name'].unique()):
-            service_data = df[df['service_name'] == service]
-            x = service_data['x_index'].values
-            y = service_data['usage_count'].values
-            curve = plot.plot(x, y, pen=pg.mkPen(color=CHART_COLORS_SERVICE[i % len(CHART_COLORS_SERVICE)], width=3, capstyle=Qt.RoundCap), name=service)
-            fill = pg.FillBetweenItem(
-                curve1=curve,
-                curve2=pg.PlotDataItem(x, np.zeros_like(x)),
-                brush=pg.mkBrush(QColor(CHART_COLORS_SERVICE[i % len(CHART_COLORS_SERVICE)] + '40')),
-            )
-            plot.addItem(fill)
-
-        plot.getAxis('bottom').setTicks([[(i, period) for period, i in period_to_index.items()]])
-        plot.getAxis('bottom').setStyle(tickTextOffset=15, tickFont=QFont('Roboto', 8))
-        plot.getAxis('left').setStyle(tickFont=QFont('Roboto', 8))
-        plot.setTitle(f"Service Trends ({period.capitalize()})", color=COLOR_TEXT_DARK, size="14pt", bold=True)
-
-        # Add Legend
-        legend = plot.addLegend(offset=(10, 10))
-        legend.setBrush(pg.mkBrush(COLOR_CHART_BG))
-        legend.setPen(pg.mkPen(COLOR_BORDER, width=1))
-        legend.setLabelTextColor(COLOR_TEXT_DARK)
-        legend.setVisible(True)
-
-        plot.showGrid(x=True, y=True, alpha=0.2)
 
     def filter_table(self, txt):
         txt = txt.lower()
@@ -342,10 +270,9 @@ class RotatedAxis(pg.AxisItem):
         """Override to rotate tick labels manually (handled by setting angle in TextItem)"""
         return [str(value) for value in values]
 
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    window = ServiceAnalysis()  # Changed to directly instantiate ServiceAnalysis
+    window = ServiceAnalysis()
     window.show()
     sys.exit(app.exec())
