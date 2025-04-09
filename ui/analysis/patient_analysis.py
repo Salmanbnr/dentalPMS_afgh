@@ -11,6 +11,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import pandas as pd
 import qtawesome as qta
+from matplotlib.patheffects import withStroke
 from model.analysis_model import (
     get_patient_demographics,
     get_patient_visit_frequency,
@@ -18,20 +19,31 @@ from model.analysis_model import (
     get_single_visit_patients
 )
 
-# --- New Color Palette (Warm and Professional) ---
-COLOR_PRIMARY = "#4A90E2"  # Soft Blue
-COLOR_SECONDARY = "#F7F9FC"  # Very Light Gray Background
-COLOR_ACCENT = "#D4A017"  # Gold Accent
-COLOR_SUCCESS = "#28A745"  # Green
-COLOR_WARNING = "#FFC107"  # Amber
-COLOR_DANGER = "#DC3545"  # Red
-COLOR_INFO = "#6C757D"  # Gray
-COLOR_TEXT_LIGHT = "#FFFFFF"  # White
-COLOR_TEXT_DARK = "#333333"  # Dark Gray
-COLOR_TEXT_MUTED = "#6C757D"  # Muted Gray
-COLOR_BORDER = "#DEE2E6"  # Light Gray Border
-COLOR_CHART_BG = "#FFFFFF"  # White Chart Background
-COLOR_TABLE_ALT_ROW = "#F8F9FA"  # Light Gray for Alternating Rows
+# --- Updated Color Palette for Dental Clinic (Professional and Clean) ---
+COLOR_PRIMARY = "#2c3e50"  # Dark Blue (Headers, Titles)
+COLOR_SECONDARY = "#ecf0f1"  # Light Gray (Background)
+COLOR_ACCENT = "#3498db"  # Bright Blue (Buttons, Highlights)
+COLOR_SUCCESS = "#27ae60"  # Green (Success, Normal Ranges)
+COLOR_WARNING = "#e67e22"  # Orange (Warnings, Medium Risk)
+COLOR_DANGER = "#e74c3c"  # Red (Danger, Critical Conditions)
+COLOR_INFO = "#8e44ad"  # Purple (Optional Category)
+COLOR_TEXT_LIGHT = "#ffffff"  # White (Light Text)
+COLOR_TEXT_DARK = "#34495e"  # Dark Gray (Body Text)
+COLOR_TEXT_MUTED = "#7f8c8d"  # Muted Gray (Subtext)
+COLOR_BORDER = "#bdc3c7"  # Light Gray Border (UI Elements)
+COLOR_CHART_BG = "#ffffff"  # White (Chart Background)
+COLOR_TABLE_ALT_ROW = "#f8f9f9"  # Very Light Gray (Alternating Rows)
+COLOR_HOVER = "#4a6fa5"  # Hover State (Darker Accent Blue)
+
+# New Chart Colors for Dental Clinic (Clean and Professional)
+CHART_COLORS_DENTAL = [
+    "#1E90FF",  # Dodger Blue (Primary Data Series, Trustworthy)
+    "#32CD32",  # Lime Green (Healthy, Positive Outcomes)
+    "#FFD700",  # Gold (Highlight, Premium Services)
+    "#FF4500",  # Orange Red (Alerts, Urgent Issues)
+    "#C0C0C0",  # Silver (Neutral, Background Data)
+    "#20B2AA"   # Light Sea Green (Secondary Metrics, Calm)
+]
 
 # --- Stylesheet ---
 DASHBOARD_STYLESHEET = f"""
@@ -56,11 +68,15 @@ QTableWidget {{
     border-radius: 8px;
 }}
 QHeaderView::section {{
-    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {COLOR_PRIMARY}, stop:1 {COLOR_INFO});
+    background-color: {COLOR_PRIMARY};  /* Fixed dark blue header */
     color: {COLOR_TEXT_LIGHT};
     padding: 10px;
     font-weight: 600;
     border-bottom: 1px solid {COLOR_BORDER};
+}}
+QTableWidget::item:selected {{
+    background-color: {COLOR_HOVER};  /* Row selection color */
+    color: {COLOR_TEXT_LIGHT};
 }}
 QFrame {{
     border-radius: 12px;
@@ -72,7 +88,7 @@ class PatientAnalysis(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(DASHBOARD_STYLESHEET)
-        self.setWindowTitle("Patient Analytics Dashboard")
+        self.setWindowTitle("Dental Clinic Analytics Dashboard")
         self.setMinimumSize(800, 900)  # Reduced minimum width for side panel compatibility
         self.init_ui()
         QTimer.singleShot(100, self.load_all_data)
@@ -86,7 +102,7 @@ class PatientAnalysis(QWidget):
         header_frame = QFrame()
         header_frame.setMaximumHeight(80)
         header_layout = QVBoxLayout(header_frame)
-        title = QLabel("Patient Analytics Dashboard")
+        title = QLabel("Dental Clinic Analytics Dashboard")
         title.setFont(QFont('Roboto', 24, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {COLOR_PRIMARY};")
         subtitle = QLabel("Real-time insights into patient demographics and visit trends")
@@ -267,12 +283,22 @@ class PatientAnalysis(QWidget):
         gd = data.get('gender', [])
         if gd:
             df = pd.DataFrame(gd, columns=['gender', 'count'])
-            colors = [COLOR_ACCENT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER, COLOR_INFO][:len(df)]
-            wedges, _, autotexts = ax.pie(
-                df['count'], autopct='%1.1f%%', pctdistance=0.7,
+            colors = CHART_COLORS_DENTAL[:len(df)]  # Use new dental chart colors
+            wedges, texts, autotexts = ax.pie(
+                df['count'], autopct='%1.1f%%', pctdistance=0.75,  # Move percentages closer to center
                 colors=colors, startangle=90, wedgeprops={'width': 0.4, 'edgecolor': 'white', 'linewidth': 1},
                 textprops={'color': COLOR_TEXT_LIGHT, 'fontsize': 10, 'weight': 'bold'}
             )
+            # Position percentages inside the pie slices
+            for i, autotext in enumerate(autotexts):
+                gender = df['gender'].iloc[i].lower()
+                if gender == 'female':
+                    autotext.set_color(COLOR_SUCCESS)  # Green for female
+                else:
+                    autotext.set_color(COLOR_ACCENT)  # Blue for others
+                # Ensure text stays inside the pie
+                autotext.set_position((autotext.get_position()[0] * 0.6, autotext.get_position()[1] * 0.6))  # Move inward
+
             ax.legend(wedges, df['gender'], title="Gender", loc='center left', bbox_to_anchor=(1, 0.5),
                       facecolor=COLOR_SECONDARY, edgecolor=COLOR_BORDER, title_fontsize=10)
             ax.set_title('Gender Distribution', fontsize=14, color=COLOR_PRIMARY, pad=15)
@@ -286,7 +312,7 @@ class PatientAnalysis(QWidget):
         ad = data.get('age', [])
         if ad:
             df = pd.DataFrame(ad, columns=['age_group', 'count']).sort_values('age_group')
-            bars = ax.bar(df['age_group'], df['count'], color=COLOR_SUCCESS, edgecolor='white', linewidth=1)
+            bars = ax.bar(df['age_group'], df['count'], color=CHART_COLORS_DENTAL[0], edgecolor='white', linewidth=1)  # Use first dental chart color
             for bar in bars:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2, height, f'{int(height)}', ha='center', va='bottom',
@@ -330,7 +356,7 @@ class PatientAnalysis(QWidget):
 
         tbl.resizeColumnsToContents()
 
-        # Horizontal Bar Chart
+        # Horizontal Bar Chart with Rounded Right Ends
         ax = self.visit_ax
         ax.clear()
         if top:
@@ -338,17 +364,27 @@ class PatientAnalysis(QWidget):
             names = df['name']
             counts = df['visit_count'].fillna(0)
             y_pos = range(len(names))
-            bars = ax.barh(y_pos, counts, height=0.3, align='center', color=COLOR_ACCENT, edgecolor='white', linewidth=1)
+
+            # Create bars with rounded right ends
+            bars = ax.barh(y_pos, counts, height=0.3, align='center', color=CHART_COLORS_DENTAL[0], edgecolor='white', linewidth=1)
             for bar in bars:
-                bar.set_linewidth(0)
+                bar.set_linewidth(1)  # Remove edge for clean look
+                # Apply rounded effect (simulated by reducing width at end)
+                bar.set_width(bar.get_width() * 0.90)  # Slightly reduce width for rounding effect
+                bar.set_path_effects([withStroke(linewidth=2, foreground='white')])  # White stroke for clean edge
+
             ax.set_yticks(y_pos)
             ax.set_yticklabels(names, fontsize=8, color=COLOR_TEXT_DARK)
             ax.invert_yaxis()
             ax.set_xlabel('Total Visits', color=COLOR_TEXT_MUTED, fontsize=10)
             ax.set_title('Top Visitors', fontsize=14, color=COLOR_PRIMARY, pad=15)
+
+            # Increase distance for labels
             max_count = counts.max() if not counts.empty else 1
             for i, v in enumerate(counts):
-                ax.text(v + max_count*0.02, i, str(int(v)), va='center', ha='left', fontsize=8, color=COLOR_TEXT_DARK)
+                # Move text further right for clarity
+                ax.text(v + max_count*0.03, i, str(int(v)), va='center', ha='left', fontsize=8, color=COLOR_TEXT_DARK)
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
