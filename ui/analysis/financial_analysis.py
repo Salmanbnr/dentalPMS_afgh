@@ -1,18 +1,20 @@
+# financial_analysis.py (Enhanced Version)
+
 import sys
+import qtawesome as qta # Import Qtawesome
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QComboBox,
-    QLineEdit, QLabel, QSizePolicy  # Added QLabel, QSizePolicy
+    QLineEdit, QLabel, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QSize, QPointF
-from PyQt6.QtGui import QColor, QFont, QPalette, QLinearGradient, QBrush, QPen, QIcon # Added QIcon
+from PyQt6.QtGui import QColor, QFont, QPalette, QLinearGradient, QBrush, QPen, QIcon, QFontDatabase # Added QFontDatabase
 import pyqtgraph as pg
 import pandas as pd
 import numpy as np
-from datetime import date, datetime, timedelta # For date calculations if needed here
+from datetime import date, datetime, timedelta
 
 # --- Import your data fetching functions ---
-# Make sure analysis_model.py is accessible (e.g., in the same directory or added to sys.path)
 try:
     from model.analysis_model import (
         get_revenue_analysis,
@@ -20,7 +22,7 @@ try:
         get_revenue_today,
         get_revenue_this_week,
         get_revenue_this_month,
-        get_revenue_by_service # Import the new function
+        get_revenue_by_service
     )
     MODEL_AVAILABLE = True
 except ImportError as e:
@@ -36,262 +38,310 @@ except ImportError as e:
 # --- End Import ---
 
 
-# --- Color Palette (keep as is) ---
-COLOR_PRIMARY = "#2c3e50"; COLOR_SECONDARY = "#ecf0f1"; COLOR_ACCENT = "#3498db"
-COLOR_SUCCESS = "#27ae60"; COLOR_WARNING = "#e67e22"; COLOR_DANGER = "#e74c3c"
-COLOR_INFO = "#8e44ad"; COLOR_TEXT_LIGHT = "#ffffff"; COLOR_TEXT_DARK = "#34495e"
-COLOR_TEXT_MUTED = "#7f8c8d"; COLOR_BORDER = "#bdc3c7"; COLOR_CHART_BG = "#ffffff"
-COLOR_TABLE_ALT_ROW = "#f8f9f9"; COLOR_HOVER = "#4a6fa5"
-CHART_COLORS_DENTAL = ["#1E90FF","#32CD32","#FFD700","#FF4500","#C0C0C0","#20B2AA"]
-# Add colors for KPI cards
-KPI_BG_COLOR = COLOR_CHART_BG
-KPI_BORDER_COLOR = COLOR_BORDER
-KPI_ICON_COLOR = COLOR_ACCENT
-KPI_VALUE_COLOR = COLOR_PRIMARY
-KPI_TITLE_COLOR = COLOR_TEXT_MUTED
+# --- Enhanced Color Palette & Theme ---
+COLOR_PRIMARY = "#1A5276" # Slightly adjusted Dark Blue
+COLOR_SECONDARY = "#F4F6F6" # Lighter Gray Background
+COLOR_ACCENT = "#3498DB" # Bright Blue
+COLOR_SUCCESS = "#27AE60" # Green
+COLOR_WARNING = "#F39C12" # Brighter Orange
+COLOR_DANGER = "#E74C3C" # Red
+COLOR_INFO = "#8E44AD" # Purple
+COLOR_TEXT_LIGHT = "#FFFFFF" # White
+COLOR_TEXT_DARK = "#2C3E50" # Darker Gray Text (Primary Dark)
+COLOR_TEXT_MUTED = "#707B7C" # Muted Gray Text
+COLOR_BORDER = "#D5DBDB" # Lighter Border
+COLOR_CHART_BG = "#FFFFFF" # White
+COLOR_TABLE_ALT_ROW = "#F8F9F9"
+COLOR_HOVER = "#5DADE2" # Lighter blue hover
+KPI_ICON_COLOR = COLOR_ACCENT # Default Icon Color
+
+CHART_COLORS_DENTAL = ["#3498DB", "#2ECC71", "#F1C40F", "#E74C3C", "#95A5A6", "#1ABC9C"] # Refreshed Palette
+
+# Font Setup (Optional but recommended for consistency)
+# QFontDatabase.addApplicationFont("path/to/Roboto-Regular.ttf")
+# QFontDatabase.addApplicationFont("path/to/Roboto-Medium.ttf")
+# QFontDatabase.addApplicationFont("path/to/Roboto-Bold.ttf")
+FONT_REGULAR = "Roboto" # Use "Segoe UI" or system default if Roboto not available
+FONT_MEDIUM = "Roboto Medium"
+FONT_BOLD = "Roboto Bold"
 
 
-# --- Stylesheet (Minor Adjustments) ---
+# --- Stylesheet ---
 DASHBOARD_STYLESHEET = f"""
 QWidget {{
     background-color: {COLOR_SECONDARY};
     color: {COLOR_TEXT_DARK};
-    font-family: 'Roboto', 'Segoe UI', sans-serif;
-    font-size: 11pt;
+    font-family: '{FONT_REGULAR}', 'Segoe UI', sans-serif;
+    font-size: 10pt; /* Base font size */
 }}
-QFrame {{ /* General frame styling */
-    border-radius: 12px;
+QFrame#MainFrame {{ /* Style the main content frames */
+    border-radius: 10px;
     background-color: {COLOR_CHART_BG};
     border: 1px solid {COLOR_BORDER};
 }}
-/* Style specific frames using object names */
-#KpiCard QFrame {{
-    background-color: {KPI_BG_COLOR};
-    border: 1px solid {KPI_BORDER_COLOR};
-    border-radius: 10px;
+QFrame#KpiCardFrame {{ /* Style KPI Card Frame */
+    background-color: {COLOR_CHART_BG};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 8px;
 }}
-#KpiCard QLabel#ValueLabel {{
-    font-size: 20pt;
-    font-weight: 600;
-    color: {KPI_VALUE_COLOR};
+QLabel#KpiValueLabel {{
+    font-family: '{FONT_BOLD}', '{FONT_REGULAR}';
+    font-size: 18pt; /* Adjusted size */
+    font-weight: 700;
+    color: {COLOR_PRIMARY}; /* Use primary color for value */
+    padding-bottom: 2px;
 }}
-#KpiCard QLabel#TitleLabel {{
+QLabel#KpiTitleLabel {{
     font-size: 9pt;
-    color: {KPI_TITLE_COLOR};
-    font-weight: 500;
+    font-weight: 500; /* Medium weight */
+    font-family: '{FONT_MEDIUM}', '{FONT_REGULAR}';
+    color: {COLOR_TEXT_MUTED};
 }}
-#KpiCard QLabel#IconLabel {{
-    font-size: 24pt; /* Adjust icon size if using text/emoji */
-    color: {KPI_ICON_COLOR};
-    min-width: 30px; /* Ensure space for icon */
+QLabel#KpiIconLabel {{
+    /* Icon color set via code */
+    min-width: 35px;
+    max-width: 35px; /* Fixed width for alignment */
+    qproperty-alignment: 'AlignCenter'; /* Center icon */
 }}
 QTableWidget {{
-    background-color: {COLOR_CHART_BG}; border: 1px solid {COLOR_BORDER};
+    background-color: {COLOR_CHART_BG}; border: none; /* Remove border */
     gridline-color: {COLOR_BORDER}; alternate-background-color: {COLOR_TABLE_ALT_ROW};
-    border-radius: 8px; font-size: 10pt;
+    border-radius: 8px; font-size: 9pt; /* Slightly smaller table font */
+    selection-background-color: {COLOR_ACCENT}30; /* Lighter selection */
+    selection-color: {COLOR_TEXT_DARK};
 }}
-QTableWidget::item {{ padding: 8px; border-bottom: 1px solid {COLOR_BORDER}; }}
+QTableWidget::item {{
+    padding: 9px 12px; /* Adjusted padding */
+    border-bottom: 1px solid {COLOR_BORDER};
+}}
 QTableWidget::item:selected {{
-    background-color: {COLOR_ACCENT}30; color: {COLOR_TEXT_DARK};
-    border-left: 3px solid {COLOR_ACCENT};
+    border-left: 3px solid {COLOR_ACCENT}; /* Keep indicator */
 }}
 QHeaderView::section {{
     background-color: {COLOR_PRIMARY}; color: {COLOR_TEXT_LIGHT};
-    padding: 12px 8px; font-weight: 600; border: none;
-    border-bottom: 1px solid {COLOR_PRIMARY}; font-size: 10pt;
+    padding: 10px 12px; font-weight: 600; border: none;
+    font-size: 9pt; text-transform: uppercase; /* Uppercase headers */
+    font-family: '{FONT_MEDIUM}', '{FONT_REGULAR}';
 }}
 QHeaderView {{ border: none; border-bottom: 1px solid {COLOR_BORDER}; }}
 QTableCornerButton::section {{ background-color: {COLOR_PRIMARY}; border: none; }}
 QComboBox {{
     background-color: {COLOR_CHART_BG}; border: 1px solid {COLOR_BORDER};
-    border-radius: 6px; padding: 8px 25px 8px 12px; font-size: 10pt;
-    color: {COLOR_TEXT_DARK}; min-width: 150px;
+    border-radius: 6px; padding: 7px 25px 7px 10px; /* Adjusted padding */
+    font-size: 9pt; color: {COLOR_TEXT_DARK}; min-width: 130px;
+    font-family: '{FONT_MEDIUM}', '{FONT_REGULAR}';
 }}
 QComboBox::drop-down {{
     subcontrol-origin: padding; subcontrol-position: top right; width: 20px;
     border-left-width: 1px; border-left-color: {COLOR_BORDER}; border-left-style: solid;
     border-top-right-radius: 6px; border-bottom-right-radius: 6px;
 }}
-/* QComboBox::down-arrow - Consider using QStyle standard arrow or qtawesome */
-QComboBox:hover {{ background-color: {COLOR_SECONDARY}; border-color: {COLOR_ACCENT}; }}
+QComboBox:hover {{ border-color: {COLOR_ACCENT}; }}
 QComboBox QAbstractItemView {{
     background-color: {COLOR_CHART_BG}; border: 1px solid {COLOR_BORDER};
     selection-background-color: {COLOR_ACCENT}30; selection-color: {COLOR_TEXT_DARK};
-    color: {COLOR_TEXT_DARK}; padding: 5px;
+    color: {COLOR_TEXT_DARK}; padding: 4px; font-size: 9pt;
 }}
 QLineEdit {{
     background-color: {COLOR_CHART_BG}; border: 1px solid {COLOR_BORDER};
-    border-radius: 6px; padding: 8px 12px; font-size: 10pt; color: {COLOR_TEXT_DARK};
+    border-radius: 6px; padding: 7px 10px; font-size: 9pt; color: {COLOR_TEXT_DARK};
 }}
 QLineEdit:focus {{ border: 1px solid {COLOR_ACCENT}; }}
-PlotWidget {{ border-radius: 12px; border: none; }}
-AxisItem {{ /* Styling done via code */ }}
-LabelItem {{ color: {COLOR_TEXT_MUTED}; }}
+PlotWidget {{ border-radius: 10px; border: none; }}
+AxisItem {{ /* Axis pen set via code */ }}
+LabelItem {{ color: {COLOR_TEXT_MUTED}; font-size: 9pt; }}
 ViewBox {{ border-radius: 8px; border: none; }}
+QLabel#SectionTitleLabel {{ /* Style for titles above table/chart */
+    font-family: '{FONT_BOLD}', '{FONT_REGULAR}';
+    font-size: 11pt;
+    font-weight: 600;
+    color: {COLOR_PRIMARY};
+    margin-bottom: 5px;
+    margin-top: 5px;
+}}
 """
 
-# --- Reusable KPI Card Widget ---
+# --- Reusable KPI Card Widget (Premium Style) ---
 class StatCard(QWidget):
-    def __init__(self, title, icon_placeholder="[I]", parent=None):
+    def __init__(self, title, icon_name="fa5s.question-circle", icon_color=KPI_ICON_COLOR, parent=None):
         super().__init__(parent)
-        self.setObjectName("KpiCard") # For specific styling
-        self.setMinimumWidth(180) # Ensure cards have some width
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed) # Expand horizontally
+        self.setObjectName("KpiCard")
+        self.setMinimumWidth(180)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 10, 15, 10) # Padding L,T,R,B
-        layout.setSpacing(10)
+        main_layout = QVBoxLayout(self) # Use QVBoxLayout for the card itself
+        main_layout.setContentsMargins(0, 0, 0, 0) # No margins on the widget itself
 
-        # Frame for background and border
+        # Frame for background, border, and shadow
         frame = QFrame(self)
-        frame.setObjectName("CardFrame") # If needed for more specific frame styling
-        frame_layout = QHBoxLayout(frame) # Layout inside the frame
-        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame.setObjectName("KpiCardFrame")
+        frame_layout = QHBoxLayout(frame) # Use QHBoxLayout inside the frame
+        frame_layout.setContentsMargins(12, 12, 12, 12) # Padding inside frame
         frame_layout.setSpacing(10)
 
-        # Icon Label (using placeholder text)
-        self.icon_label = QLabel(icon_placeholder)
-        self.icon_label.setObjectName("IconLabel")
-        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # TODO: Replace placeholder with actual icon:
-        # self.icon_label.setPixmap(QIcon("path/to/icon.png").pixmap(QSize(24, 24)))
-        # self.icon_label.setScaledContents(True)
-        frame_layout.addWidget(self.icon_label, 0) # Icon takes minimal space
+        # Icon Label
+        self.icon_label = QLabel()
+        self.icon_label.setObjectName("KpiIconLabel")
+        try:
+            # Use qtawesome for icons
+            icon = qta.icon(icon_name, color=icon_color)
+            self.icon_label.setPixmap(icon.pixmap(QSize(32, 32))) # Adjust size as needed
+        except Exception as e:
+            print(f"Qtawesome Error: {e}. Using placeholder.")
+            self.icon_label.setText("[?]") # Fallback text icon
+            self.icon_label.setStyleSheet(f"color: {icon_color}; font-size: 24pt;")
 
-        # Value and Title Layout
+        frame_layout.addWidget(self.icon_label, 0, Qt.AlignmentFlag.AlignCenter) # Center vertically
+
+        # Value and Title Layout (Vertical)
         text_layout = QVBoxLayout()
-        text_layout.setSpacing(0)
-        text_layout.addStretch(1) # Push text down slightly
+        text_layout.setSpacing(2) # Minimal spacing between value and title
+        text_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight) # Align text right
 
         self.value_label = QLabel("0")
-        self.value_label.setObjectName("ValueLabel")
+        self.value_label.setObjectName("KpiValueLabel")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         text_layout.addWidget(self.value_label)
 
         self.title_label = QLabel(title)
-        self.title_label.setObjectName("TitleLabel")
+        self.title_label.setObjectName("KpiTitleLabel")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         text_layout.addWidget(self.title_label)
-        text_layout.addStretch(1)
 
-        frame_layout.addLayout(text_layout, 1) # Text takes expanding space
-        layout.addWidget(frame) # Add styled frame to main layout
+        frame_layout.addLayout(text_layout, 1) # Text takes remaining space
+        main_layout.addWidget(frame) # Add styled frame to main layout
+
+        # Shadow Effect
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 35)) # Slightly softer shadow
+        shadow.setOffset(0, 2)
+        frame.setGraphicsEffect(shadow)
+
 
     def set_value(self, value):
         try:
             # Format without currency symbol, with commas, no decimals
-            self.value_label.setText(f"{int(value):,}")
+            formatted_value = f"{int(value):,}"
         except (ValueError, TypeError):
-            self.value_label.setText("N/A")
+            formatted_value = "N/A"
+        self.value_label.setText(formatted_value)
+
 
 # --- Main Financial Analysis Widget ---
 class FinancialAnalysis(QWidget):
     def __init__(self):
         super().__init__()
+        # Configure pyqtgraph global options
         pg.setConfigOption('background', COLOR_CHART_BG)
-        pg.setConfigOption('foreground', COLOR_TEXT_DARK)
-        pg.setConfigOptions(antialias=True)
-
+        pg.setConfigOption('foreground', COLOR_TEXT_DARK) # Default foreground for text items
+        pg.setConfigOptions(antialias=True)             # Enable Antialiasing
+        
         self.setStyleSheet(DASHBOARD_STYLESHEET)
         self.setWindowTitle("Financial Analysis Dashboard")
-        self.setMinimumSize(1000, 850) # Increased min height for KPIs + new chart
+        self.setMinimumSize(1000, 800) # Adjusted min height
         self.init_ui()
         if MODEL_AVAILABLE:
             self.load_data()
         else:
             print("Analysis Model not available. Cannot load data.")
-            # Optionally display a message to the user in the UI
+            # TODO: Display a message in the UI if model is unavailable
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(15, 15, 15, 15) # Slightly reduced margins
+        main_layout.setSpacing(18) # Consistent spacing
 
         # --- KPI Section ---
         kpi_layout = QHBoxLayout()
         kpi_layout.setSpacing(15)
 
-        self.kpi_today = StatCard("Revenue Today", "[📅]") # Placeholder icons
-        self.kpi_week = StatCard("Revenue This Week", "[ W ]")
-        self.kpi_month = StatCard("Revenue This Month", "[ M ]")
+        # Use relevant icons and colors
+        self.kpi_today = StatCard("Collected Today", "fa5s.sun", COLOR_WARNING)
+        self.kpi_week = StatCard("Collected This Week", "fa5s.calendar-week", COLOR_SUCCESS)
+        self.kpi_month = StatCard("Collected This Month", "fa5s.calendar-alt", COLOR_ACCENT)
 
         kpi_layout.addWidget(self.kpi_today)
         kpi_layout.addWidget(self.kpi_week)
         kpi_layout.addWidget(self.kpi_month)
-        kpi_layout.addStretch(1) # Push cards to the left
+        kpi_layout.addStretch(1)
 
         main_layout.addLayout(kpi_layout)
 
         # --- Filters Row ---
         filter_layout = QHBoxLayout()
-        filter_layout.setSpacing(15)
+        filter_layout.setSpacing(10)
         filter_layout.addStretch(1) # Push filters to the right
+
+        combo_label = QLabel("Trend Period:")
+        combo_label.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 9pt;")
+        filter_layout.addWidget(combo_label)
 
         self.period_combo = QComboBox()
         self.period_combo.addItems(['Month', 'Week', 'Day'])
         self.period_combo.setCurrentText("Month")
-        self.period_combo.setMinimumWidth(180)
+        self.period_combo.setMinimumWidth(120) # Reduced width
         if MODEL_AVAILABLE:
              self.period_combo.currentTextChanged.connect(lambda text: self.load_revenue_analysis(self.revenue_plot, text.lower()))
-        filter_layout.addWidget(self.period_combo, 0, Qt.AlignmentFlag.AlignRight)
+        filter_layout.addWidget(self.period_combo)
+
+        filter_layout.addSpacing(20) # Space between controls
 
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search Deviations...")
-        self.search_bar.setFixedWidth(220) # Slightly wider search
+        self.search_bar.setPlaceholderText("Search Price Deviations...")
+        self.search_bar.setFixedWidth(200)
         if MODEL_AVAILABLE:
              self.search_bar.textChanged.connect(self.filter_table)
-        filter_layout.addWidget(self.search_bar, 0, Qt.AlignmentFlag.AlignRight)
+        filter_layout.addWidget(self.search_bar)
 
         main_layout.addLayout(filter_layout)
 
 
-        # --- Main Content Area (Charts/Tables) ---
+        # --- Main Content Area (Charts/Tables in a QHBoxLayout) ---
         content_layout = QHBoxLayout()
-        content_layout.setSpacing(20)
+        content_layout.setSpacing(18)
 
-        # Left: Revenue Trend Chart
+        # Left Column (Revenue Trend + Service Revenue)
+        left_col_layout = QVBoxLayout()
+        left_col_layout.setSpacing(18)
+
+        # Revenue Trend Chart
         revenue_frame = QFrame()
-        revenue_frame.setMinimumHeight(280) # Adjusted height
-        revenue_frame.setMaximumHeight(350)
+        revenue_frame.setObjectName("MainFrame")
+        # revenue_frame.setMinimumHeight(300) # Remove fixed min heights for flexibility
         revenue_layout = QVBoxLayout(revenue_frame)
-        revenue_layout.setContentsMargins(5, 5, 5, 5) # Reduced margins slightly
-        revenue_layout.setSpacing(0)
-
-        self.revenue_plot = pg.PlotWidget(background=None)
-        self.revenue_plot.getPlotItem().getViewBox().setBackgroundColor(COLOR_CHART_BG)
-        self.revenue_plot.showGrid(x=True, y=True, alpha=0.15)
-        self.revenue_plot.getAxis('bottom').setPen(pg.mkPen(color=COLOR_BORDER, width=1))
-        self.revenue_plot.getAxis('left').setPen(pg.mkPen(color=COLOR_BORDER, width=1))
-        self.revenue_plot.getAxis('bottom').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED))
-        self.revenue_plot.getAxis('left').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED))
-        # Remove currency symbol from label
-        self.revenue_plot.setLabel('left', 'Amount', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        self.revenue_plot.setLabel('bottom', 'Time Period', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        self.revenue_plot.getPlotItem().getViewBox().setBorder(None)
-        self.revenue_plot.setAntialiasing(True)
-        self.revenue_plot.getPlotItem().getViewBox().setMouseEnabled(x=False, y=False) # Disable scroll/pan
+        revenue_layout.setContentsMargins(8, 8, 8, 8) # Inner padding
+        self.revenue_plot = self._create_plotwidget() # Helper to create plots
         revenue_layout.addWidget(self.revenue_plot)
-        self.revenue_plot.getPlotItem().layout.setContentsMargins(10, 10, 10, 10) # T, R, B, L Adjusted margins
-
-        shadow_rev = QGraphicsDropShadowEffect(blurRadius=15, xOffset=0, yOffset=2, color=QColor(0,0,0,40))
-        revenue_frame.setGraphicsEffect(shadow_rev)
-        content_layout.addWidget(revenue_frame, 1) # Equal stretch
+        left_col_layout.addWidget(revenue_frame, 1) # Takes expanding space vertically
 
 
-        # Right: Price Deviation Table
+        # Revenue by Service Chart
+        service_rev_frame = QFrame()
+        service_rev_frame.setObjectName("MainFrame")
+        # service_rev_frame.setMinimumHeight(280)
+        service_rev_layout = QVBoxLayout(service_rev_frame)
+        service_rev_layout.setContentsMargins(8, 8, 8, 8)
+        self.service_rev_plot = self._create_plotwidget() # Helper
+        service_rev_layout.addWidget(self.service_rev_plot)
+        left_col_layout.addWidget(service_rev_frame, 1) # Takes expanding space vertically
+
+        content_layout.addLayout(left_col_layout, 6) # Left column takes 60% width
+
+
+        # Right Column (Price Deviation Table)
         deviation_frame = QFrame()
-        deviation_frame.setMinimumHeight(280) # Match chart height
-        deviation_frame.setMaximumHeight(350)
+        deviation_frame.setObjectName("MainFrame")
         deviation_layout = QVBoxLayout(deviation_frame)
-        deviation_layout.setContentsMargins(15, 15, 15, 15)
+        deviation_layout.setContentsMargins(15, 15, 15, 15) # More padding for table frame
         deviation_layout.setSpacing(10)
 
-        deviation_title = QLabel("Price Deviation Analysis", styleSheet=f"font-size: 12pt; font-weight: bold; color: {COLOR_TEXT_DARK}; margin-bottom: 5px;")
+        deviation_title = QLabel("Price Deviation Analysis")
+        deviation_title.setObjectName("SectionTitleLabel")
         deviation_layout.addWidget(deviation_title)
 
         self.deviation_table = QTableWidget()
         self.deviation_table.setColumnCount(5)
-        # Remove currency symbol from headers
         self.deviation_table.setHorizontalHeaderLabels(['Name', 'Default Price', 'Avg Charged', 'Avg Deviation', 'Count'])
         self.deviation_table.verticalHeader().setVisible(False)
         self.deviation_table.setAlternatingRowColors(True); self.deviation_table.setShowGrid(False)
@@ -301,48 +351,35 @@ class FinancialAnalysis(QWidget):
         self.deviation_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         hdr_view = self.deviation_table.horizontalHeader()
         hdr_view.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        hdr_view.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        hdr_view.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        hdr_view.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        hdr_view.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        hdr_view.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        hdr_view.setFixedHeight(40) # Reduced header height slightly
-        deviation_layout.addWidget(self.deviation_table)
+        hdr_view.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Name column stretches
+        for i in range(1, 5): # Resize other columns to contents
+             hdr_view.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        hdr_view.setFixedHeight(35) # Slimmer header
+        deviation_layout.addWidget(self.deviation_table, 1) # Table takes available space
 
-        shadow_dev = QGraphicsDropShadowEffect(blurRadius=15, xOffset=0, yOffset=2, color=QColor(0,0,0,40))
-        deviation_frame.setGraphicsEffect(shadow_dev)
-        content_layout.addWidget(deviation_frame, 1) # Equal stretch
+        content_layout.addWidget(deviation_frame, 4) # Right column takes 40% width
 
-        main_layout.addLayout(content_layout) # Add row for chart/table
+        main_layout.addLayout(content_layout, 1) # Content takes expanding space
 
+    def _create_plotwidget(self):
+        """Helper function to create and configure a PlotWidget."""
+        plot = pg.PlotWidget(background=None)
+        plot.getPlotItem().getViewBox().setBackgroundColor(COLOR_CHART_BG)
+        plot.showGrid(x=True, y=True, alpha=0.15)
+        plot.getAxis('bottom').setPen(pg.mkPen(color=COLOR_BORDER, width=1))
+        plot.getAxis('left').setPen(pg.mkPen(color=COLOR_BORDER, width=1))
+        plot.getAxis('bottom').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED))
+        plot.getAxis('left').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED))
+        plot.getPlotItem().getViewBox().setBorder(None)
+        plot.setAntialiasing(True)
+        plot.getPlotItem().getViewBox().setMouseEnabled(x=False, y=False) # Disable scroll/pan
+        plot.getPlotItem().layout.setContentsMargins(5, 5, 5, 5) # T, R, B, L - minimal padding inside plot
 
-        # --- Additional Analysis Section ---
-        service_rev_frame = QFrame()
-        service_rev_frame.setMinimumHeight(250) # Height for the new chart
-        service_rev_layout = QVBoxLayout(service_rev_frame)
-        service_rev_layout.setContentsMargins(5, 5, 5, 5)
-
-        self.service_rev_plot = pg.PlotWidget(background=None)
-        self.service_rev_plot.getPlotItem().getViewBox().setBackgroundColor(COLOR_CHART_BG)
-        self.service_rev_plot.getAxis('bottom').setPen(pg.mkPen(color=COLOR_BORDER, width=1))
-        self.service_rev_plot.getAxis('left').setPen(pg.mkPen(color=COLOR_BORDER, width=1))
-        self.service_rev_plot.getAxis('bottom').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED))
-        self.service_rev_plot.getAxis('left').setTextPen(pg.mkPen(color=COLOR_TEXT_MUTED))
-        self.service_rev_plot.setLabel('left', 'Revenue', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        self.service_rev_plot.setLabel('bottom', 'Service', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        self.service_rev_plot.getPlotItem().getViewBox().setBorder(None)
-        self.service_rev_plot.setAntialiasing(True)
-        self.service_rev_plot.getPlotItem().getViewBox().setMouseEnabled(x=False, y=False) # Disable scroll/pan
-        service_rev_layout.addWidget(self.service_rev_plot)
-        self.service_rev_plot.getPlotItem().layout.setContentsMargins(10, 10, 10, 10)
-
-        shadow_srv = QGraphicsDropShadowEffect(blurRadius=15, xOffset=0, yOffset=2, color=QColor(0,0,0,40))
-        service_rev_frame.setGraphicsEffect(shadow_srv)
-
-        main_layout.addWidget(service_rev_frame) # Add the new chart frame below
-
-        main_layout.addStretch(1) # Add stretch at the end
-
+        # --- Disable Scientific Notation ---
+        plot.getAxis('left').enableAutoSIPrefix(False)
+        plot.getAxis('bottom').enableAutoSIPrefix(False)
+        # -----------------------------------
+        return plot
 
     def load_data(self):
         """Load data for all components."""
@@ -350,25 +387,17 @@ class FinancialAnalysis(QWidget):
 
         # Load KPIs
         try:
-            rev_today = get_revenue_today()
-            rev_week = get_revenue_this_week()
-            rev_month = get_revenue_this_month()
-            self.kpi_today.set_value(rev_today)
-            self.kpi_week.set_value(rev_week)
-            self.kpi_month.set_value(rev_month)
+            self.kpi_today.set_value(get_revenue_today())
+            self.kpi_week.set_value(get_revenue_this_week())
+            self.kpi_month.set_value(get_revenue_this_month())
         except Exception as e:
             print(f"Error loading KPI data: {e}")
-            self.kpi_today.set_value("Error")
+            self.kpi_today.set_value("Error") # Show error on card
             self.kpi_week.set_value("Error")
             self.kpi_month.set_value("Error")
 
-        # Load main revenue chart (default period)
         self.load_revenue_analysis(self.revenue_plot, self.period_combo.currentText().lower())
-
-        # Load deviation table
         self.load_price_deviation(self.deviation_table)
-
-        # Load revenue by service chart
         self.load_revenue_by_service(self.service_rev_plot)
 
 
@@ -380,9 +409,8 @@ class FinancialAnalysis(QWidget):
         except Exception as e: print(f"ERROR loading revenue data: {e}"); data = []
 
         if not data or pd.DataFrame(data).empty:
-            text = pg.TextItem(f"No data for {period} view.", color=COLOR_TEXT_MUTED, anchor=(0.5, 0.5))
-            plot.addItem(text); plot.setTitle(f"Revenue Trends ({period.capitalize()})", color=COLOR_PRIMARY, size="12pt", bold=True)
-            return
+            text = pg.TextItem(f"No data for {period} view", color=COLOR_TEXT_MUTED, anchor=(0.5, 0.5)); plot.addItem(text)
+            plot.setTitle(f"Revenue Trends ({period.capitalize()})", color=COLOR_PRIMARY, size="11pt", bold=True); return
 
         try:
             df = pd.DataFrame(data)
@@ -393,51 +421,44 @@ class FinancialAnalysis(QWidget):
             unique_periods = df['time_period'].astype(str).unique()
             period_to_index = {p: i for i, p in enumerate(unique_periods)}
             df['x_index'] = df['time_period'].astype(str).map(period_to_index)
-            x = df['x_index'].values
-            billed = df['billed_amount'].values
-            collected = df['collected_amount'].values
+            x = df['x_index'].values; billed = df['billed_amount'].values; collected = df['collected_amount'].values
         except Exception as e: print(f"ERROR processing revenue data: {e}"); return
 
-        # --- Styling ---
-        pen_billed = pg.mkPen(color=CHART_COLORS_DENTAL[0], width=3)
-        pen_collected = pg.mkPen(color=CHART_COLORS_DENTAL[1], width=3)
-        gradient_billed = QLinearGradient(0, 0, 0, 1); gradient_billed.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
-        gradient_billed.setColorAt(0.0, QColor(CHART_COLORS_DENTAL[0] + '50')); gradient_billed.setColorAt(1.0, QColor(CHART_COLORS_DENTAL[0] + '05'))
-        brush_billed = QBrush(gradient_billed)
-        gradient_collected = QLinearGradient(0, 0, 0, 1); gradient_collected.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
-        gradient_collected.setColorAt(0.0, QColor(CHART_COLORS_DENTAL[1] + '50')); gradient_collected.setColorAt(1.0, QColor(CHART_COLORS_DENTAL[1] + '05'))
-        brush_collected = QBrush(gradient_collected)
+        # Styling
+        pen_billed = pg.mkPen(color=CHART_COLORS_DENTAL[0], width=3); pen_collected = pg.mkPen(color=CHART_COLORS_DENTAL[1], width=3)
+        gradient_billed = QLinearGradient(0,0,0,1); gradient_billed.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
+        gradient_billed.setColorAt(0.0, QColor(CHART_COLORS_DENTAL[0]+'60')); gradient_billed.setColorAt(1.0, QColor(CHART_COLORS_DENTAL[0]+'05')); brush_billed = QBrush(gradient_billed)
+        gradient_collected = QLinearGradient(0,0,0,1); gradient_collected.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
+        gradient_collected.setColorAt(0.0, QColor(CHART_COLORS_DENTAL[1]+'60')); gradient_collected.setColorAt(1.0, QColor(CHART_COLORS_DENTAL[1]+'05')); brush_collected = QBrush(gradient_collected)
 
-        billed_curve = plot.plot(x, billed, pen=pen_billed, name='Billed')
-        fill_billed = pg.FillBetweenItem(billed_curve, pg.PlotDataItem(x, np.zeros_like(x)), brush=brush_billed); plot.addItem(fill_billed)
-        collected_curve = plot.plot(x, collected, pen=pen_collected, name='Collected')
-        fill_collected = pg.FillBetweenItem(collected_curve, pg.PlotDataItem(x, np.zeros_like(x)), brush=brush_collected); plot.addItem(fill_collected)
+        billed_curve = plot.plot(x, billed, pen=pen_billed, name='Billed'); fill_billed = pg.FillBetweenItem(billed_curve, pg.PlotDataItem(x, np.zeros_like(x)), brush=brush_billed); plot.addItem(fill_billed)
+        collected_curve = plot.plot(x, collected, pen=pen_collected, name='Collected'); fill_collected = pg.FillBetweenItem(collected_curve, pg.PlotDataItem(x, np.zeros_like(x)), brush=brush_collected); plot.addItem(fill_collected)
 
         if len(x) < 25: # Markers
-             marker_size = 7; marker_pen = pg.mkPen(color=COLOR_CHART_BG, width=1)
+             marker_size = 6; marker_pen = pg.mkPen(color=COLOR_CHART_BG, width=1.5)
              billed_curve.setSymbol('o'); billed_curve.setSymbolSize(marker_size); billed_curve.setSymbolPen(marker_pen); billed_curve.setSymbolBrush(pg.mkBrush(color=CHART_COLORS_DENTAL[0]))
              collected_curve.setSymbol('o'); collected_curve.setSymbolSize(marker_size); collected_curve.setSymbolPen(marker_pen); collected_curve.setSymbolBrush(pg.mkBrush(color=CHART_COLORS_DENTAL[1]))
 
-        ticks = [[(i, p) for p, i in period_to_index.items()]]
+        ticks = [[(i, p) for p, i in period_to_index.items()]];
         try: plot.getAxis('bottom').setTicks(ticks)
-        except Exception as tick_error: print(f"Tick Error: {tick_error}"); plot.getAxis('bottom').setTicks(None)
+        except Exception as e: print(f"Tick Error: {e}"); plot.getAxis('bottom').setTicks(None)
 
-        plot.getAxis('bottom').setStyle(tickTextOffset=10, tickFont=QFont('Roboto', 7)) # Smaller font for ticks
-        plot.getAxis('left').setStyle(tickFont=QFont('Roboto', 8), tickTextWidth=40)
-        plot.getAxis('left').setWidth(50)
-        # Remove currency symbol from label
-        plot.getAxis('left').setLabel('Amount', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        plot.getAxis('bottom').setLabel('Time Period', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
+        plot.getAxis('bottom').setStyle(tickTextOffset=8, tickFont=QFont(FONT_REGULAR, 7)) # Smaller tick font
+        plot.getAxis('left').setStyle(tickFont=QFont(FONT_REGULAR, 8))
+        plot.getAxis('left').setWidth(55) # Adjust width needed for numbers without SI prefix
+        plot.setLabel('left', 'Amount', color=COLOR_TEXT_DARK, size='9pt')
+        plot.setLabel('bottom', 'Time Period', color=COLOR_TEXT_DARK, size='9pt')
+        plot.setTitle(f"Revenue Trends ({period.capitalize()})", color=COLOR_PRIMARY, size="11pt", bold=True)
 
-        plot.setTitle(f"Revenue Trends ({period.capitalize()})", color=COLOR_PRIMARY, size="12pt", bold=True) # Slightly smaller title
-
-        legend = plot.addLegend(offset=(-10, 10), brush=pg.mkBrush(COLOR_CHART_BG+'E0'), pen=pg.mkPen(COLOR_BORDER, width=0.5))
-        legend.setLabelTextColor(COLOR_TEXT_DARK)
+        # Add legend only if there's data
+        if len(x) > 0:
+            legend = plot.addLegend(offset=(-15, 5), brush=pg.mkBrush(COLOR_CHART_BG+'D0'), pen=pg.mkPen(COLOR_BORDER, width=0.5), labelTextSize='8pt')
+            legend.setLabelTextColor(COLOR_TEXT_DARK)
 
         plot.showGrid(x=True, y=True, alpha=0.15)
         y_max = max(billed.max() if len(billed)>0 else 0, collected.max() if len(collected)>0 else 0)
         plot.getViewBox().setLimits(xMin=-0.5, xMax=len(x)-0.5, yMin=0 - y_max*0.05, yMax=y_max*1.05)
-
+        plot.getViewBox().autoRange(padding=0.02) # Adjust padding
 
     def load_price_deviation(self, table):
         table.setRowCount(0)
@@ -451,116 +472,93 @@ class FinancialAnalysis(QWidget):
         if not self.all_data: print("No price deviation data."); return
 
         table.setRowCount(len(self.all_data))
-        number_font = QFont('Roboto', 9)
+        number_font = QFont(FONT_REGULAR, 9)
+        bold_font = QFont(FONT_MEDIUM, 9) # Use medium for name
 
         for row, entry in enumerate(self.all_data):
              name = entry.get('name', 'N/A')
-             default_price = entry.get('default_price', 0)
-             avg_charged = entry.get('avg_charged', 0)
-             # Use the signed deviation from the model
-             avg_deviation = entry.get('avg_deviation', 0) # Already calculated in updated model
-             count = entry.get('count', 0)
+             default_price = entry.get('default_price', 0); avg_charged = entry.get('avg_charged', 0)
+             avg_deviation = entry.get('avg_deviation', 0); count = entry.get('count', 0)
 
-             # Format without currency symbols
-             name_item = QTableWidgetItem(str(name))
+             name_item = QTableWidgetItem(str(name)); name_item.setFont(bold_font)
              default_price_item = QTableWidgetItem(f"{default_price:,.2f}")
              avg_charged_item = QTableWidgetItem(f"{avg_charged:,.2f}")
              avg_deviation_item = QTableWidgetItem(f"{avg_deviation:,.2f}")
              count_item = QTableWidgetItem(str(count))
 
-             default_price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter); default_price_item.setFont(number_font)
-             avg_charged_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter); avg_charged_item.setFont(number_font)
-             avg_deviation_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter) # Font set below
-             count_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter); count_item.setFont(number_font)
+             # Align and set font for numeric columns
+             for item in [default_price_item, avg_charged_item, avg_deviation_item, count_item]:
+                 item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                 item.setFont(number_font)
 
-             if avg_deviation > 1: # Overcharged
-                 avg_deviation_item.setForeground(QColor(COLOR_SUCCESS)); avg_deviation_item.setFont(number_font)
-             elif avg_deviation < -1: # Undercharged
-                 avg_deviation_item.setForeground(QColor(COLOR_WARNING)); avg_deviation_item.setFont(number_font)
-             else: # Minimal deviation
-                 avg_deviation_item.setForeground(QColor(COLOR_TEXT_MUTED)); avg_deviation_item.setFont(number_font)
+             # Color deviation
+             if avg_deviation > 1: avg_deviation_item.setForeground(QColor(COLOR_SUCCESS))
+             elif avg_deviation < -1: avg_deviation_item.setForeground(QColor(COLOR_WARNING))
+             else: avg_deviation_item.setForeground(QColor(COLOR_TEXT_MUTED))
 
              table.setItem(row, 0, name_item); table.setItem(row, 1, default_price_item)
              table.setItem(row, 2, avg_charged_item); table.setItem(row, 3, avg_deviation_item)
              table.setItem(row, 4, count_item)
 
-        table.horizontalHeader().resizeSections(QHeaderView.ResizeMode.ResizeToContents)
+        # Resize columns after populating
+        table.resizeColumnsToContents()
+        # Ensure name column stretches if there's extra space
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
 
 
     def load_revenue_by_service(self, plot, limit=10):
-        """Loads data into the revenue-by-service bar chart."""
         plot.clear(); plot.setTitle("")
         if not MODEL_AVAILABLE: return
 
-        try:
-            data = get_revenue_by_service(limit=limit)
-        except Exception as e:
-            print(f"ERROR loading revenue by service: {e}")
-            data = []
+        try: data = get_revenue_by_service(limit=limit)
+        except Exception as e: print(f"ERROR loading revenue by service: {e}"); data = []
 
         if not data:
-            text = pg.TextItem("No service revenue data", color=COLOR_TEXT_MUTED, anchor=(0.5, 0.5))
-            plot.addItem(text)
-            plot.setTitle("Revenue by Top Service", color=COLOR_PRIMARY, size="12pt", bold=True)
-            return
+            text = pg.TextItem("No service revenue data", color=COLOR_TEXT_MUTED, anchor=(0.5, 0.5)); plot.addItem(text)
+            plot.setTitle("Revenue by Top Service", color=COLOR_PRIMARY, size="11pt", bold=True); return
 
         try:
-            df = pd.DataFrame(data)
-            if not all(col in df.columns for col in ['name', 'total_revenue']):
-                print("ERROR: Service revenue data missing columns."); return
+            df = pd.DataFrame(data);
+            if not all(col in df.columns for col in ['name', 'total_revenue']): print("ERROR: Service revenue data missing columns."); return
             df['total_revenue'] = pd.to_numeric(df['total_revenue'], errors='coerce').fillna(0)
-            df = df.sort_values('total_revenue', ascending=True) # Sort for horizontal bar chart
+            df = df[df['total_revenue'] > 0].sort_values('total_revenue', ascending=True) # Only show services with revenue
+            if df.empty: raise ValueError("No services with positive revenue found")
 
-            service_names = df['name'].tolist()
-            revenues = df['total_revenue'].values
+            service_names = df['name'].tolist(); revenues = df['total_revenue'].values
             y_ticks = list(range(len(service_names)))
+        except Exception as e: print(f"ERROR processing service revenue data: {e}"); return
 
-        except Exception as e:
-            print(f"ERROR processing service revenue data: {e}")
-            return
-
-        # Create Bar Chart
-        bar_item = pg.BarGraphItem(
-            x0=0, y=y_ticks, height=0.6, width=revenues, # x0=0 for horizontal bars starting at 0
-            brush=pg.mkBrush(color=CHART_COLORS_DENTAL[2] + 'A0'), # Gold-ish, semi-transparent
-            pen=pg.mkPen(color=CHART_COLORS_DENTAL[2], width=1)
-        )
+        bar_item = pg.BarGraphItem(x0=0, y=y_ticks, height=0.6, width=revenues,
+            brush=pg.mkBrush(color=CHART_COLORS_DENTAL[5]+'B0'), # Use another theme color
+            pen=pg.mkPen(color=CHART_COLORS_DENTAL[5], width=1))
         plot.addItem(bar_item)
 
-        # Customize Axes for Bar Chart
         plot.getAxis('left').setTicks([list(zip(y_ticks, service_names))])
-        plot.getAxis('left').setStyle(tickFont=QFont('Roboto', 8))
-        plot.getAxis('bottom').setStyle(tickFont=QFont('Roboto', 8))
-        # Remove currency symbol from label
-        plot.getAxis('bottom').setLabel('Total Revenue', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        plot.getAxis('left').setLabel('Service', color=COLOR_TEXT_DARK, **{'font-size': '10pt'})
-        plot.setTitle(f"Revenue by Top {len(service_names)} Services", color=COLOR_PRIMARY, size="12pt", bold=True)
+        plot.getAxis('left').setStyle(tickFont=QFont(FONT_REGULAR, 8))
+        plot.getAxis('bottom').setStyle(tickFont=QFont(FONT_REGULAR, 8))
+        plot.setLabel('left', 'Service', color=COLOR_TEXT_DARK, size='9pt')
+        plot.setLabel('bottom', 'Total Revenue', color=COLOR_TEXT_DARK, size='9pt')
+        plot.setTitle(f"Revenue by Top {len(service_names)} Services", color=COLOR_PRIMARY, size="11pt", bold=True)
 
-        # Adjust view limits
         plot.getViewBox().setLimits(xMin=0, yMin=-0.5, yMax=len(y_ticks)-0.5)
-        plot.getViewBox().autoRange(padding=0.05) # Add slight padding
+        plot.getViewBox().autoRange(padding=0.05)
 
 
     def filter_table(self, txt):
         search_term = txt.lower().strip()
         if not hasattr(self, 'all_data') or not self.all_data: return
-
         for r in range(self.deviation_table.rowCount()):
             item = self.deviation_table.item(r, 0)
-            should_hide = True
-            if item and search_term in item.text().lower(): should_hide = False
+            should_hide = not (item and search_term in item.text().lower())
             self.deviation_table.setRowHidden(r, should_hide)
 
-    def wheelEvent(self, event):
-        # Prevent wheel scroll on the main widget background
-        event.ignore()
-
+    def wheelEvent(self, event): event.ignore() # Disable wheel scroll globally
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    # app.setStyle('Fusion') # Optional
-
+    # Optional: Explicitly load font if needed
+    # QFontDatabase.addApplicationFont("path/to/Roboto-Regular.ttf") # etc.
     window = FinancialAnalysis()
-    window.show()
+    window.showMaximized() # Show maximized for better view of dashboard
+    # window.show()
     sys.exit(app.exec())
