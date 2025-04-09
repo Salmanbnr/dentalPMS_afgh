@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QLineEdit, QMessageBox
+    QFrame, QHeaderView, QApplication, QGraphicsDropShadowEffect, QLineEdit, QMessageBox, QComboBox
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QColor, QFont, QPalette
@@ -9,7 +9,7 @@ import pyqtgraph as pg
 import pandas as pd
 import numpy as np
 
-from model.analysis_model import get_service_utilization, get_medication_utilization, get_tooth_number_analysis
+from model.analysis_model import get_service_utilization, get_medication_utilization, get_tooth_number_analysis, get_medication_trends
 
 # --- Updated Color Palette for Medical Analysis ---
 COLOR_PRIMARY = "#2c3e50"       # Dark Blue (Headers, Titles)
@@ -24,6 +24,15 @@ COLOR_TABLE_ALT_ROW = "#f8f9f9" # Very Light Gray (Alternating Rows)
 COLOR_HOVER = "#4a6fa5"         # Hover State (Darker Accent Blue)
 COLOR_BAR_SERVICE = "#4682B4"   # Steel Blue for Services
 COLOR_BAR_MEDICAL = "#1abc9c"   # Solid Turquoise for Medications
+
+# New Chart Colors for Medication Trends (from medication_analysis.py)
+CHART_COLORS_TRENDS = [
+    "#e94560",  # Coral Red (Primary)
+    "#9b59b6",  # Amethyst Purple (Secondary)
+    "#ff9f43",  # Orange Peel (Highlight)
+    "#4a90e2",  # Sky Blue (Unique Metrics)
+    "#f4a261",  # Burnt Sienna (Additional Data)
+]
 
 # --- Stylesheet ---
 DASHBOARD_STYLESHEET = f"""
@@ -66,6 +75,16 @@ QLineEdit {{
 QLineEdit:focus {{
     border: 2px solid {COLOR_ACCENT};
 }}
+QComboBox {{
+    background-color: {CHART_COLORS_TRENDS[2]};  /* Orange Peel for filter */
+    color: {COLOR_TEXT_DARK};  /* Dark text for visibility */
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 10pt;
+}}
+QComboBox:hover {{
+    background-color: {COLOR_HOVER};
+}}
 """
 
 class ServiceAnalysis(QWidget):
@@ -84,15 +103,11 @@ class ServiceAnalysis(QWidget):
 
         # Main Content (No horizontal scroll, vertical scroll only if needed)
         container = QWidget()
-        cont_layout = QHBoxLayout(container)
+        cont_layout = QVBoxLayout(container)  # Changed to vertical to stack bar chart and two columns
         cont_layout.setSpacing(15)
         cont_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Left: Combined Utilization and Tooth Analysis
-        left_column = QVBoxLayout()
-        left_column.setSpacing(15)
-
-        # Combined Utilization Chart (Bar Chart for both Services and Medications)
+        # Top: Combined Utilization Chart (Bar Chart for both Services and Medications)
         utilization_frame = QFrame()
         utilization_frame.setMinimumHeight(400)
         utilization_frame.setStyleSheet(f"background-color: {COLOR_CHART_BG}; border-radius:12px;")
@@ -114,10 +129,13 @@ class ServiceAnalysis(QWidget):
         shadow.setColor(QColor(0, 0, 0, 50))
         shadow.setOffset(0, 5)
         utilization_frame.setGraphicsEffect(shadow)
-        left_column.addWidget(utilization_frame)
-        left_column.addStretch()
+        cont_layout.addWidget(utilization_frame)
 
-        # Tooth Number Analysis Table with Search Bar
+        # Bottom: Two-column layout for Tooth Table and Medication Trends
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(15)
+
+        # Left Column: Tooth Number Analysis Table with Search Bar
         tooth_frame = QFrame()
         tooth_frame.setMinimumHeight(400)
         tooth_frame.setStyleSheet(f"background-color: {COLOR_CHART_BG}; border-radius:12px;")
@@ -152,16 +170,49 @@ class ServiceAnalysis(QWidget):
         shadow.setColor(QColor(0, 0, 0, 50))
         shadow.setOffset(0, 5)
         tooth_frame.setGraphicsEffect(shadow)
-        left_column.addWidget(tooth_frame)
+        bottom_layout.addWidget(tooth_frame, 1)  # Stretch factor 1
 
-        # Ensure no horizontal scroll by setting maximum width and flexible layout
-        cont_layout.addLayout(left_column, 1)  # Left takes 100% of space
+        # Right Column: Medication Trends Line Chart (Imported from medication_analysis.py)
+        trends_frame = QFrame()
+        trends_frame.setMinimumHeight(400)  # Adjusted height to match table
+        trends_frame.setStyleSheet(f"background-color: {COLOR_CHART_BG}; border-radius:12px;")
+        trends_layout = QVBoxLayout(trends_frame)
+        trends_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Add Period Filter (Day/Week/Month)
+        self.period_combo = QComboBox()
+        self.period_combo.addItems(['Day', 'Week', 'Month'])
+        self.period_combo.currentTextChanged.connect(lambda text: self.load_medication_trends(self.trends_plot, text.lower()))
+        trends_layout.addWidget(self.period_combo)
+
+        self.trends_plot = pg.PlotWidget()
+        self.trends_plot.setBackground(COLOR_CHART_BG)
+        # Set dotted grid using PlotItem's showGrid with custom pens
+        grid_pen = pg.mkPen(color=COLOR_TEXT_DARK, width=1, style=Qt.DotLine)
+        plot_item = self.trends_plot.getPlotItem()
+        plot_item.showGrid(x=True, y=True, alpha=0.2)
+        self.trends_plot.getAxis('bottom').setPen(pg.mkPen(COLOR_TEXT_DARK, width=2))
+        self.trends_plot.getAxis('left').setPen(pg.mkPen(COLOR_TEXT_DARK, width=2))
+        self.trends_plot.setLabel('left', 'Usage Count', color=COLOR_TEXT_DARK, size='12pt', bold=True)
+        self.trends_plot.setLabel('bottom', 'Time Period', color=COLOR_TEXT_DARK, size='12pt', bold=True)
+        self.trends_plot.setMouseEnabled(x=False, y=False)
+        trends_layout.addWidget(self.trends_plot)
+
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 60))
+        shadow.setOffset(0, 8)
+        trends_frame.setGraphicsEffect(shadow)
+        bottom_layout.addWidget(trends_frame, 1)  # Stretch factor 1
+
+        cont_layout.addLayout(bottom_layout)
         main_layout.addWidget(container)
 
     def load_data(self):
         """Load initial data for all visualizations."""
         self.load_combined_utilization(self.utilization_plot)
         self.load_tooth_number(self.tooth_table)
+        self.load_medication_trends(self.trends_plot, 'month')  # Load default month view
 
     def load_combined_utilization(self, plot):
         plot.clear()
@@ -245,6 +296,59 @@ class ServiceAnalysis(QWidget):
             table.setItem(row, 1, QTableWidgetItem(str(entry['treatment_count'])))
             table.setItem(row, 2, QTableWidgetItem(entry['common_treatments']))
         table.resizeColumnsToContents()
+
+    def load_medication_trends(self, plot, period):
+        plot.clear()
+        data = get_medication_trends(period)
+        if not data or pd.DataFrame(data).empty:
+            return
+
+        df = pd.DataFrame(data)
+
+        # Pivot data to get medications as columns and time periods as rows
+        pivot_df = df.pivot(index='time_period', columns='medication_name', values='usage_count').fillna(0)
+
+        # Get unique time periods and medications
+        unique_periods = pivot_df.index.tolist()
+        medications = pivot_df.columns.tolist()
+
+        # Create x indices for time periods
+        period_to_index = {period: i for i, period in enumerate(unique_periods)}
+        x = np.array([period_to_index[period] for period in unique_periods])
+
+        # Premium Line Chart with Smooth Curves and Points
+        for i, medication in enumerate(medications):
+            y = pivot_df[medication].values
+
+            # Create a smooth line with points
+            pen = pg.mkPen(color=CHART_COLORS_TRENDS[i % len(CHART_COLORS_TRENDS)], width=3, style=Qt.SolidLine)
+            curve = plot.plot(x, y, pen=pen, name=medication, symbol='o', symbolSize=10, symbolBrush=CHART_COLORS_TRENDS[i % len(CHART_COLORS_TRENDS)], symbolPen=pen)
+
+            # Add subtle fill under the curve for premium look
+            fill = pg.FillBetweenItem(curve1=curve, curve2=pg.PlotDataItem(x, np.zeros_like(x)), brush=pg.mkBrush(QColor(CHART_COLORS_TRENDS[i % len(CHART_COLORS_TRENDS)] + '20')))
+            plot.addItem(fill)
+
+        # Set x-axis ticks with rotated labels for readability
+        plot.getAxis('bottom').setTicks([[(i, str(period)) for i, period in enumerate(unique_periods)]])
+        plot.getAxis('bottom').setStyle(tickTextOffset=15, tickFont=QFont('Roboto', 10, QFont.Bold))
+        plot.getAxis('left').setStyle(tickFont=QFont('Roboto', 10, QFont.Bold))
+
+        # Set premium title with shadow effect
+        plot.setTitle(f"Medication Usage Trends ({period.capitalize()})", color=COLOR_PRIMARY, size="16pt", bold=True)
+
+        # Add Elegant Legend
+        legend = plot.addLegend(offset=(20, 20), labelTextSize='12pt', labelTextColor=COLOR_TEXT_DARK)
+        legend.setBrush(pg.mkBrush(COLOR_CHART_BG))
+        legend.setPen(pg.mkPen(COLOR_BORDER, width=2))
+        legend.setVisible(True)
+
+        # Enhance grid and axes for premium look
+        plot.showAxis('right')
+        plot.showAxis('top')
+        plot.getAxis('right').setPen(pg.mkPen(COLOR_TEXT_DARK, width=1, style=Qt.DashLine))
+        plot.getAxis('top').setPen(pg.mkPen(COLOR_TEXT_DARK, width=1, style=Qt.DashLine))
+
+        plot.setXRange(-0.5, len(unique_periods) - 0.5, padding=0.1)
 
     def filter_table(self, txt):
         txt = txt.lower()
