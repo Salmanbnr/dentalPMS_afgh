@@ -487,9 +487,11 @@ def restore_database(backup_file_path):
     print("Attempting to restore. Ensure the application handles connection closing properly.")
 
     try:
-        # Optional: Backup current DB before overwriting
+        # Save backup in the directory where restore file is selected
+        restore_file_dir = backup_path.parent
         pre_restore_backup_name = f"{db_path.stem}_pre-restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}{db_path.suffix}"
-        pre_restore_backup_path = db_path.parent / pre_restore_backup_name
+        pre_restore_backup_path = restore_file_dir / pre_restore_backup_name
+        
         if db_path.exists():
             shutil.copy2(db_path, pre_restore_backup_path)
             print(f"Created pre-restore backup: {pre_restore_backup_path}")
@@ -509,7 +511,6 @@ def restore_database(backup_file_path):
         print(msg)
         # Consider restoring pre_restore_backup here if needed
         return False, msg
-
 # --- Reporting ---
 
 def get_patient_financial_summary(patient_id):
