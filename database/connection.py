@@ -2,14 +2,38 @@
 import sqlite3
 import os
 from pathlib import Path
+import platform
+import appdirs
 
-# Define the path for the database file relative to the project root
-# This assumes the script is run from the project root or the dental_clinic directory
-# For robustness, especially when packaged, consider placing the DB in user data folders.
-# For now, we place it inside the 'database' directory.
-DATABASE_DIR = Path(__file__).parent
+# Define the application name and author for the user data directory
+APP_NAME = "DentalClinic"
+APP_AUTHOR = "Muhammad Salman"
+
+# Get the user data directory based on the operating system
+def get_user_data_dir():
+    """Get the appropriate user data directory based on OS"""
+    try:
+        # Use appdirs if available (recommended)
+        return Path(appdirs.user_data_dir(APP_NAME, APP_AUTHOR))
+    except (NameError, ImportError):
+        # Fallback implementation if appdirs is not available
+        system = platform.system()
+        home = Path.home()
+        
+        if system == "Windows":
+            # Windows: AppData/Local/APP_NAME
+            return home / "AppData" / "Local" / APP_NAME
+        elif system == "Darwin":
+            # macOS: ~/Library/Application Support/APP_NAME
+            return home / "Library" / "Application Support" / APP_NAME
+        else:
+            # Linux/Unix: ~/.local/share/APP_NAME
+            return home / ".local" / "share" / APP_NAME
+
+# Get the user data directory
+USER_DATA_DIR = get_user_data_dir()
 DATABASE_NAME = "dental_clinic.db"
-DATABASE_PATH = DATABASE_DIR / DATABASE_NAME
+DATABASE_PATH = USER_DATA_DIR / DATABASE_NAME
 
 def get_db_connection():
     """
@@ -21,13 +45,13 @@ def get_db_connection():
     """
     conn = None
     try:
-        print(f"Attempting to connect to database at: {DATABASE_PATH}")
         # Ensure the directory exists
-        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-
+        USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Attempting to connect to database at: {DATABASE_PATH}")
         conn = sqlite3.connect(DATABASE_PATH)
-        conn.row_factory = sqlite3.Row # Return rows as dictionary-like objects
-        conn.execute("PRAGMA foreign_keys = ON;") # Enforce foreign key constraints
+        conn.row_factory = sqlite3.Row  # Return rows as dictionary-like objects
+        conn.execute("PRAGMA foreign_keys = ON;")  # Enforce foreign key constraints
         print("Database connection successful.")
         return conn
     except sqlite3.Error as e:
@@ -53,6 +77,9 @@ def close_db_connection(conn):
             print(f"Error closing database connection: {e}")
 
 if __name__ == '__main__':
+    # Display where the database is located
+    print(f"Database will be stored at: {DATABASE_PATH}")
+    
     # Example usage: Test connection
     print("Testing database connection...")
     connection = get_db_connection()

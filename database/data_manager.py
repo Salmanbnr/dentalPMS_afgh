@@ -442,8 +442,17 @@ def get_total_outstanding_debt():
 
 # --- Backup and Restore ---
 
-def backup_database(backup_folder_path):
-    """Copies the current database file to the backup folder. Returns (bool, str)."""
+def backup_database(backup_folder_path, backup_name=None):
+    """
+    Copies the current database file to the backup folder with custom name.
+    
+    Args:
+        backup_folder_path (str): Path to folder where backup should be stored
+        backup_name (str, optional): Custom name for the backup file
+        
+    Returns:
+        tuple: (success (bool), message (str))
+    """
     db_path = DATABASE_PATH
     if not db_path or not db_path.exists():
         msg = f"Error: Source database file not found at {db_path}."
@@ -453,12 +462,19 @@ def backup_database(backup_folder_path):
     backup_dir = Path(backup_folder_path)
     backup_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file_name = f"{db_path.stem}_backup_{timestamp}{db_path.suffix}"
+    # Use custom backup name if provided, otherwise use timestamp
+    if backup_name:
+        # Ensure the backup name is safe for file system
+        safe_name = "".join(c for c in backup_name if c.isalnum() or c in "._- ")
+        backup_file_name = f"{safe_name}{db_path.suffix}"
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file_name = f"{db_path.stem}_backup_{timestamp}{db_path.suffix}"
+    
     backup_file_path = backup_dir / backup_file_name
 
     try:
-        shutil.copy2(db_path, backup_file_path) # copy2 preserves metadata
+        shutil.copy2(db_path, backup_file_path)  # copy2 preserves metadata
         msg = f"Database successfully backed up to: {backup_file_path}"
         print(msg)
         return True, str(backup_file_path)
@@ -466,7 +482,6 @@ def backup_database(backup_folder_path):
         msg = f"Error during database backup: {e}"
         print(msg)
         return False, msg
-
 def restore_database(backup_file_path):
     """Replaces current DB with backup, checking schema after. Returns (bool, str)."""
     backup_path = Path(backup_file_path)

@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QLabel, QFileDialog, QProgressBar, QMessageBox,
-                             QSplitter, QFrame, QSizePolicy, QStackedWidget)
+                             QSplitter, QFrame, QSizePolicy, QStackedWidget, QLineEdit)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize
 from PyQt6.QtGui import QFont, QIcon, QColor, QPalette
 import qtawesome as qta
@@ -14,14 +14,15 @@ class WorkerThread(QThread):
     """Worker thread to handle database operations without freezing UI"""
     finished = pyqtSignal(bool, str)
     
-    def __init__(self, operation_type, path):
+    def __init__(self, operation_type, path, backup_name=None):
         super().__init__()
         self.operation_type = operation_type  # 'backup' or 'restore'
         self.path = path
+        self.backup_name = backup_name
     
     def run(self):
         if self.operation_type == 'backup':
-            success, message = backup_database(self.path)
+            success, message = backup_database(self.path, self.backup_name)
         else:  # restore
             success, message = restore_database(self.path)
         self.finished.emit(success, message)
@@ -244,6 +245,49 @@ class BackupPage(OperationPage):
         
         path_layout.addLayout(self.path_select_layout)
         
+        # Backup name input
+        name_layout = QVBoxLayout()
+        
+        name_header = QHBoxLayout()
+        name_icon = QLabel()
+        name_icon.setPixmap(qta.icon('fa5s.tag', color='#4a86e8').pixmap(24, 24))
+        name_title = QLabel("Backup Name")
+        name_title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        
+        name_header.addWidget(name_icon)
+        name_header.addWidget(name_title)
+        name_header.addStretch()
+        
+        name_layout.addLayout(name_header)
+        
+        self.name_input_layout = QHBoxLayout()
+        self.name_label = QLabel("Enter a name for this backup:")
+        self.name_label.setStyleSheet("color: #555;")
+        
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Enter backup name...")
+        self.name_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #e0e0e0;
+                border-radius: 5px;
+                padding: 8px;
+                background-color: #f9f9f9;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4a86e8;
+                background-color: white;
+            }
+        """)
+        
+        self.name_input_layout.addWidget(self.name_label)
+        self.name_input_layout.addWidget(self.name_input)
+        
+        name_layout.addLayout(self.name_input_layout)
+        
+        # Add name input to path frame
+        path_layout.addSpacing(10)
+        path_layout.addLayout(name_layout)
+        
         # Backup button
         self.backup_button = QPushButton("Start Backup")
         self.backup_button.setIcon(qta.icon('fa5s.database', color='white'))
@@ -283,6 +327,7 @@ class BackupPage(OperationPage):
         # Connect signals
         self.browse_button.clicked.connect(self.select_backup_folder)
         self.backup_button.clicked.connect(self.start_backup)
+        self.name_input.textChanged.connect(self.check_inputs)
         
         self.selected_path = None
     
@@ -292,17 +337,26 @@ class BackupPage(OperationPage):
         if folder_path:
             self.selected_path = folder_path
             self.path_label.setText(f"{folder_path}")
-            self.backup_button.setEnabled(True)
+            self.check_inputs()
+    
+    def check_inputs(self):
+        """Check if all required inputs are provided"""
+        self.backup_button.setEnabled(
+            self.selected_path is not None and 
+            self.name_input.text().strip() != ""
+        )
     
     def start_backup(self):
         """Start the backup process"""
-        if self.selected_path:
-            self.update_status("Backing up database, please wait...", True)
+        if self.selected_path and self.name_input.text().strip():
+            backup_name = self.name_input.text().strip()
+            self.update_status(f"Backing up database as '{backup_name}', please wait...", True)
             self.backup_button.setEnabled(False)
             self.browse_button.setEnabled(False)
+            self.name_input.setEnabled(False)
             
             # Start worker thread
-            self.worker = WorkerThread('backup', self.selected_path)
+            self.worker = WorkerThread('backup', self.selected_path, backup_name)
             self.worker.finished.connect(self.backup_completed)
             self.worker.start()
     
@@ -311,6 +365,7 @@ class BackupPage(OperationPage):
         self.progress_bar.setVisible(False)
         self.browse_button.setEnabled(True)
         self.backup_button.setEnabled(True)
+        self.name_input.setEnabled(True)
         
         if success:
             self.status_icon.setPixmap(qta.icon('fa5s.check-circle', color='#4CAF50').pixmap(24, 24))
@@ -535,7 +590,7 @@ class DatabaseBackupRestoreUI(QMainWindow):
         # Backup card
         backup_card = ActionCard(
             "Backup Database",
-            "Create a backup copy of your database with timestamp",
+            "Create a backup copy of your database with custom name",
             "fa5s.save",
             "Backup Now"
         )
