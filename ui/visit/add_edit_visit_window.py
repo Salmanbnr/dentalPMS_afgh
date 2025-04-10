@@ -222,7 +222,10 @@ class AddEditVisitWindow(QWidget):
         form_layout.setSpacing(15)
 
         self.visit_date_input = QDateEdit(QDate.currentDate())
-        self.visit_date_input.setCalendarPopup(True)
+        self.visit_date_input.setCalendarPopup(False)  # Disable calendar popup
+        self.visit_date_input.setReadOnly(True)  # Make it read-only
+        self.visit_date_input.setStyleSheet("QDateEdit { background-color: #f0f0f0; }")  # Optional: Gray out to indicate it's static
+
         self.visit_notes_input = QTextEdit()
         self.visit_notes_input.setPlaceholderText("Enter general notes about the visit...")
         self.visit_notes_input.setMinimumHeight(100)
@@ -771,7 +774,7 @@ class AddEditVisitWindow(QWidget):
 
     def clear_form(self):
         """Reset the form fields after saving or cancelling."""
-        self.visit_date_input.setDate(QDate.currentDate())
+        self.visit_date_input.setDate(QDate.currentDate())  # Reset to current date, but it won't change
         self.visit_notes_input.clear()
         self.lab_results_input.clear()
         self.paid_amount_input.clear()
