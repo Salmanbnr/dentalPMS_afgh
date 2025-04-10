@@ -386,7 +386,7 @@ class ServicesManagementWidget(QWidget):
             self.services_table.setItem(row, 2, desc_item)
             
             # Price
-            price_item = QTableWidgetItem(f"${service['default_price']:.2f}")
+            price_item = QTableWidgetItem(f"{service['default_price']:.2f}")
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.services_table.setItem(row, 3, price_item)
             
