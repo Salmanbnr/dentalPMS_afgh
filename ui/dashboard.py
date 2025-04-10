@@ -19,17 +19,18 @@ from ui.analysis.patient_analysis import PatientAnalysis
 from ui.analysis.service_analysis import ServiceAnalysis
 from ui.analysis.financial_analysis import FinancialAnalysis
 from ui.analysis.operational_analysis import OperationalAnalysis
+from ui.backup_restore import DatabaseBackupRestoreUI  # Import the backup/restore UI
 
 CLINIC_NAME = "Salman Dental Clinic"
 LOGO_FILENAME = "logo.png"
 LOGO_PATH = LOGO_FILENAME
 
-# Premium Color Palette
+# Premium Color Palette (unchanged)
 COLOR_PRIMARY = "#1a2b4a"      # Deep Navy Blue (Sidebar, Headers)
 COLOR_SECONDARY = "#f5f7fa"    # Soft Off-White (Background)
 COLOR_ACCENT = "#00aaff"       # Vibrant Sky Blue (Highlights, Buttons)
 COLOR_TEXT_LIGHT = "#ffffff"   # Pure White (Light Text)
-COLOR_TEXT_DARK = "#1f2a44"    # Dark Slate (Body Text)
+COLOR_TEXT_DARK = "#1f2a44"   # Dark Slate (Body Text)
 COLOR_BORDER = "#d0d7de"       # Light Gray (Borders)
 COLOR_HOVER = "#007acc"        # Darker Blue (Hover Effects)
 COLOR_SHADOW = "rgba(0, 0, 0, 0.15)"  # Subtle Shadow
@@ -42,7 +43,6 @@ DASHBOARD_STYLESHEET = f"""
         background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                                     stop:0 {COLOR_PRIMARY}, stop:1 #2c3e60);
         border-right: 1px solid {COLOR_BORDER};
-       
     }}
     #Sidebar QLabel#ClinicNameLabel {{
         color: {COLOR_TEXT_LIGHT};
@@ -67,7 +67,6 @@ DASHBOARD_STYLESHEET = f"""
         font-family: 'Roboto', sans-serif;
         border-radius: 8px;
         margin: 5px 15px;
-    
     }}
     #Sidebar QPushButton:hover {{
         background-color: {COLOR_HOVER};
@@ -75,7 +74,6 @@ DASHBOARD_STYLESHEET = f"""
     #Sidebar QPushButton:checked {{
         background-color: {COLOR_ACCENT};
         font-weight: bold;
-      
     }}
     #ContentStackWidget {{
         background-color: {COLOR_SECONDARY};
@@ -106,7 +104,6 @@ DASHBOARD_STYLESHEET = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 10px;
         margin-bottom: 15px;
-      
     }}
 """
 
@@ -149,7 +146,7 @@ class DashboardWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"{CLINIC_NAME} - Dashboard")
-        self.setGeometry(50, 50, 1400, 800)  # Slightly larger for premium feel
+        self.setGeometry(50, 50, 1400, 800)
         self.setStyleSheet(DASHBOARD_STYLESHEET)
 
         main_widget = QWidget()
@@ -195,6 +192,7 @@ class DashboardWindow(QMainWindow):
         self.due_patients_button = self.add_nav_button(sidebar_layout, "DUE PATIENTS", 'fa5s.money-bill-alt', self.refresh_due_patients)
         self.inventory_button = self.add_nav_button(sidebar_layout, "INVENTORY", 'fa5s.box', self.refresh_inventory)
         self.analysis_button = self.add_nav_button(sidebar_layout, "ANALYSIS", 'fa5s.chart-bar', self.refresh_analysis)
+        self.backup_restore_button = self.add_nav_button(sidebar_layout, "BACKUP", 'fa5s.database', self.refresh_backup_restore)  # New button
 
         sidebar_layout.addStretch(1)
         main_layout.addWidget(self.sidebar)
@@ -214,6 +212,9 @@ class DashboardWindow(QMainWindow):
 
         self.analysis_page = None
         self.init_analysis_page()
+
+        self.backup_restore_page = None  # New page for backup/restore
+        self.init_backup_restore_page()  # Initialize the new page
 
         main_layout.addWidget(self.content_stack)
 
@@ -274,6 +275,22 @@ class DashboardWindow(QMainWindow):
             self.analysis_page = error_widget
             self.content_stack.insertWidget(3, error_widget)
 
+    def init_backup_restore_page(self):
+        """Initialize the backup and restore page"""
+        try:
+            if self.backup_restore_page is not None:
+                self.content_stack.removeWidget(self.backup_restore_page)
+                self.backup_restore_page.deleteLater()
+            # Create an instance of DatabaseBackupRestoreUI and get its central widget
+            backup_restore_ui = DatabaseBackupRestoreUI()
+            self.backup_restore_page = backup_restore_ui.centralWidget()  # Use the central widget of the backup/restore UI
+            self.content_stack.insertWidget(4, self.backup_restore_page)  # Insert as the 5th page (index 4)
+        except Exception as e:
+            error_widget = QLabel(f"Error loading Backup and Restore: {str(e)}")
+            error_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.backup_restore_page = error_widget
+            self.content_stack.insertWidget(4, error_widget)
+
     def add_nav_button(self, layout, text, icon_name, callback_function):
         button = QPushButton(qta.icon(icon_name, color=COLOR_TEXT_LIGHT), f" {text}")
         button.setCheckable(True)
@@ -283,7 +300,7 @@ class DashboardWindow(QMainWindow):
         return button
 
     def update_button_states(self, active_button):
-        for btn in [self.home_button, self.due_patients_button, self.inventory_button, self.analysis_button]:
+        for btn in [self.home_button, self.due_patients_button, self.inventory_button, self.analysis_button, self.backup_restore_button]:
             if btn != active_button:
                 btn.setChecked(False)
         active_button.setChecked(True)
@@ -308,6 +325,12 @@ class DashboardWindow(QMainWindow):
         self.init_analysis_page()
         self.content_stack.setCurrentIndex(3)
         self.update_button_states(self.analysis_button)
+
+    def refresh_backup_restore(self):
+        """Refresh and show the backup and restore page"""
+        self.init_backup_restore_page()
+        self.content_stack.setCurrentIndex(4)  # Set to the new backup/restore page (index 4)
+        self.update_button_states(self.backup_restore_button)
 
     def show_home_page(self):
         self.refresh_home_page()
