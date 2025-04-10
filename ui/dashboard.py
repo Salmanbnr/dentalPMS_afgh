@@ -145,6 +145,7 @@ class AnalysisWindow(QWidget):
 class DashboardWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowIcon(qta.icon('fa5s.tooth', color=COLOR_TEXT_DARK))
         self.setWindowTitle(f"{CLINIC_NAME} - Dashboard")
         self.setGeometry(50, 50, 1400, 800)
         self.setStyleSheet(DASHBOARD_STYLESHEET)
