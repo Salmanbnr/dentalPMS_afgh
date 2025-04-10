@@ -1,3 +1,3 @@
 {
-  "python.analysis.extraPaths": ["./ui"]
+  "python.analysis.extraPaths": ["./ui", "./database"]
 }

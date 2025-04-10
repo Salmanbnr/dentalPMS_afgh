@@ -287,17 +287,13 @@ class PatientAnalysis(QWidget):
             wedges, texts, autotexts = ax.pie(
                 df['count'], autopct='%1.1f%%', pctdistance=0.75,  # Move percentages closer to center
                 colors=colors, startangle=90, wedgeprops={'width': 0.4, 'edgecolor': 'white', 'linewidth': 1},
-                textprops={'color': COLOR_TEXT_LIGHT, 'fontsize': 10, 'weight': 'bold'}
+                textprops={'fontsize': 10, 'weight': 'bold'}
             )
-            # Position percentages inside the pie slices
+            # Position percentages inside the pie slices and match color to slice
             for i, autotext in enumerate(autotexts):
-                gender = df['gender'].iloc[i].lower()
-                if gender == 'female':
-                    autotext.set_color(COLOR_SUCCESS)  # Green for female
-                else:
-                    autotext.set_color(COLOR_ACCENT)  # Blue for others
+                autotext.set_color(colors[i])  # Set percentage text color to match slice color
                 # Ensure text stays inside the pie
-                autotext.set_position((autotext.get_position()[0] * 0.6, autotext.get_position()[1] * 0.6))  # Move inward
+                autotext.set_position((autotext.get_position()[0] * 0.4, autotext.get_position()[1] * 0.4))  # Move inward
 
             ax.legend(wedges, df['gender'], title="Gender", loc='center left', bbox_to_anchor=(1, 0.5),
                       facecolor=COLOR_SECONDARY, edgecolor=COLOR_BORDER, title_fontsize=10)
@@ -326,7 +322,6 @@ class PatientAnalysis(QWidget):
         else:
             ax.text(0.5, 0.5, 'No Data', ha='center', va='center', color=COLOR_TEXT_MUTED, fontsize=12)
         self.age_canvas.draw_idle()
-
     def load_visits(self):
         data = get_patient_visit_frequency() or []
         top = sorted(data, key=lambda x: x.get('visit_count') or 0, reverse=True)[:8]  # Reduced to 8 for space
