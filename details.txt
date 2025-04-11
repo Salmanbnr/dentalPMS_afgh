@@ -6,7 +6,8 @@ img.save("logo.ico")
 
 
 # Scripts for pyinstaller in terminal
-pyinstaller --name DentalClinic --windowed --icon=logo.ico --onedir --add-data "database;database" --add-data "model;model" --add-data "pdf;pdf" --add-data "pdf_template;pdf_template" --add-data "ui;ui" --add-data "S:\dental_clinic\dentalapp\Lib\site-packages\PyQt6\Qt6\plugins\platforms;platforms" ^--hidden-import qtawesome main.py
+
+pyinstaller --name DentalClinic --windowed --icon=logo.ico --onedir --add-data "database;database" --add-data "model;model" --add-data "pdf;pdf" --add-data "pdf_template;pdf_template" --add-data "ui;ui" --add-data "S:\dental_clinic\dentalapp\Lib\site-packages\PyQt6\Qt6\plugins\platforms;platforms" --collect-all qtawesome --collect-all sqlite3 --collect-all appdirs --collect-all matplotlib --collect-all pandas --collect-all pyqtgraph main.py
 
 
 replace all DentalClinic name with application name
