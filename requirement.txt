@@ -5,3 +5,5 @@ PyMuPDF
 pandas
 numpy
 pyqtgraph 
+pyinstaller
+

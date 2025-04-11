@@ -1,0 +1,21 @@
+from PIL import Image
+img = Image.open("logo.png")
+img.save("logo.ico")
+
+
+
+
+# Scripts for pyinstaller in terminal
+# pyinstaller \
+#   --name DentalClinic \
+#   --windowed \
+#   --icon=logo.ico \
+#   --add-data "database;database" \
+#   --add-data "model;model" \
+#   --add-data "pdf;pdf" \
+#   --add-data "pdf_template;pdf_template" \
+#   --add-data "ui;ui" \
+#   main.py
+
+
+replace all DentalClinic name with application name
