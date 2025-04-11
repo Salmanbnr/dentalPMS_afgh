@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -11,6 +12,17 @@ from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 import fitz  # PyMuPDF
+
+# Resource path helper function for PyInstaller
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
 
 # --- Styling ---
 color_primary = HexColor("#3498db")
@@ -65,8 +77,8 @@ def generate_visit_pdf(visit_data, patient_data, services=None, prescriptions=No
     if not file_path.lower().endswith(".pdf"):
         file_path += ".pdf"
 
-    # Check template
-    template_path = "pdf_template/template.pdf"
+    # Check template using resource_path
+    template_path = resource_path("pdf_template/template.pdf")
     if not os.path.exists(template_path):
         QMessageBox.critical(None, "Template Missing",
                              f"PDF template not found at '{template_path}'")
@@ -287,8 +299,7 @@ def generate_visit_pdf(visit_data, patient_data, services=None, prescriptions=No
     # --- Merge with template using PyMuPDF ---
     try:
         template_doc = fitz.open(template_path)
-        content_doc = fitz.open(
-            stream=content_buffer.getvalue(), filetype="pdf")  # Corrected syntax
+        content_doc = fitz.open(stream=content_buffer.getvalue(), filetype="pdf")
         output_doc = fitz.open()
 
         for page_num in range(len(content_doc)):
@@ -325,11 +336,11 @@ if __name__ == "__main__":
 
     test_patient = {
         'patient_id': 101, 'name': 'Asad Khan', 'father_name': 'Jamil Khan',
-        'sex': 'Male', 'age': '30', 'phone_number': '0300-1234567',
+        'gender': 'Male', 'age': '30', 'phone_number': '0300-1234567',
         'address': 'House 12, Street 4, G-9/1, Islamabad'
     }
     test_visit = {
-        'visit_id': 2024040701, 'visit_date': '2024-04-07',
+        'visit_number': 2024040701, 'visit_date': '2024-04-07',
         'notes': 'Regular checkup.\nPatient reported mild sensitivity.',
         'lab_results': 'X-Ray Ref: XR123 - No decay found.',
         'total_amount': 3500.00, 'paid_amount': 3000.00
@@ -347,7 +358,7 @@ if __name__ == "__main__":
 
     # Test with partial data
     # Empty services and prescriptions
-    pdf_file = generate_visit_pdf(test_visit, test_patient, None, None)
+    pdf_file = generate_visit_pdf(test_visit, test_patient, test_services, test_prescriptions)
 
     if pdf_file:
         print(f"Successfully generated test PDF: {pdf_file}")
